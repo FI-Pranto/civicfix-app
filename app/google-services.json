@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "928027885063",
+    "project_id": "civicfix-5f4fe",
+    "storage_bucket": "civicfix-5f4fe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:928027885063:android:aa76e53b1b9b789078f4a2",
+        "android_client_info": {
+          "package_name": "com.example.civicfix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwj1BDWsMCk7_bJivdGri_sUqewv5OI6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:928027885063:android:582da7661a4c188778f4a2",
+        "android_client_info": {
+          "package_name": "com.fiprod.civicfix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwj1BDWsMCk7_bJivdGri_sUqewv5OI6E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
