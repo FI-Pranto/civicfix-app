@@ -2,199 +2,232 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/pok"
+    android:background="@color/white"
     android:fillViewport="true">
 
     <LinearLayout
-        android:id="@+id/form_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:orientation="vertical">
 
-        <!-- Heading -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="70dp"
-            android:text="Create Account"
-            android:textColor="@color/teal_700"
-            android:textSize="30sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Enter your Personal Data"
-            android:textSize="16sp"
-            android:layout_gravity="center"
-            android:textStyle="bold"
-            android:textColor="@color/black"
-            android:layout_marginBottom="20dp"/>
-
-        <!-- Form Fields -->
-        <EditText
+        <ImageView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="First Name"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="8dp" />
-
-        <EditText
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Last Name"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="8dp" />
-
-        <EditText
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Email"
-            android:inputType="textEmailAddress"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="8dp" />
-
-        <EditText
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Phone Number"
-            android:inputType="phone"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="8dp" />
-
-        <EditText
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Create Password"
-            android:inputType="textPassword"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="8dp" />
-
-        <EditText
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Confirm Password"
-            android:inputType="textPassword"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="16dp" />
-
+            android:layout_height="120dp"
+            android:scaleType="fitXY"
+            android:src="@drawable/my3x" />
 
         <LinearLayout
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp"
-            android:gravity="center_vertical"
-            android:layout_gravity="center">
+            android:orientation="vertical"
+            android:padding="24dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Your Role:"
+                android:layout_gravity="center"
+                android:layout_marginTop="0dp"
+                android:text="Create Account"
+                android:textColor="@color/teal_700"
+                android:textSize="30sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Enter your Personal Data"
+                android:textSize="16sp"
+                android:layout_gravity="center"
                 android:textStyle="bold"
-                android:textSize="14sp"
-                android:textColor="@android:color/black"
-                android:layout_marginEnd="12dp" />
+                android:textColor="@color/black"
+                android:layout_marginBottom="20dp"/>
 
-            <Spinner
-                android:id="@+id/account_type_spinner"
-                android:layout_width="120dp"
-                android:layout_height="30dp"
-                android:background="@drawable/edittext_dark_bg"
+            <!-- Form Fields -->
+            <EditText
+                android:id="@+id/first_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="First Name"
+                android:textColor="@color/black"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
 
-                android:spinnerMode="dropdown"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                android:textAlignment="center" />
+            <EditText
+                android:id="@+id/last_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="Last Name"
+                android:textColor="@color/black"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
 
+            <EditText
+                android:id="@+id/email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="Email"
+                android:textColor="@color/black"
+                android:inputType="textEmailAddress"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/phone_number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="Phone Number"
+                android:textColor="@color/black"
+                android:inputType="phone"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="Create Password"
+                android:textColor="@color/black"
+                android:inputType="textPassword"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
+
+            <EditText
+                android:id="@+id/confirm_password"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="Confirm Password"
+                android:textColor="@color/black"
+                android:inputType="textPassword"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="16dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp"
+                android:gravity="center_vertical"
+                android:layout_gravity="center">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Your Role:"
+                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:textColor="@android:color/black"
+                    android:layout_marginEnd="12dp" />
+
+                <Spinner
+                    android:id="@+id/account_type_spinner"
+                    android:layout_width="120dp"
+                    android:layout_height="30dp"
+                    android:background="@drawable/edittext_dark_bg"
+                    android:spinnerMode="dropdown"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:textAlignment="center" />
+            </LinearLayout>
+
+            <!-- Extra fields for Gov Employee -->
+            <EditText
+                android:id="@+id/id_card_number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="Official ID Card Number"
+                android:textColor="@color/black"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone"/>
+
+            <EditText
+                android:id="@+id/office_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="Office Name"
+                android:textColor="@color/black"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone"/>
+
+            <EditText
+                android:id="@+id/designation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColorHint="@color/gray_dark"
+                android:hint="Designation"
+                android:textColor="@color/black"
+                android:background="@drawable/edittext_bg"
+                android:padding="12dp"
+                android:textSize="12sp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"/>
+
+            <!-- Signup Button -->
+            <Button
+                android:id="@+id/signup_button"
+                android:layout_width="200dp"
+                android:layout_height="wrap_content"
+                android:text="Signup"
+                android:layout_gravity="center"
+                android:backgroundTint="@color/teal_700"
+                android:textColor="@android:color/white"
+                android:textSize="20sp"/>
+
+            <!-- Login redirect -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Already have an Account?"
+                    android:layout_gravity="center" />
+
+                <TextView
+                    android:id="@+id/loginNow"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=" Login"
+                    android:layout_gravity="center"
+                    android:layout_marginLeft="180dp"
+                    android:textColor="@color/teal_700"/>
+            </RelativeLayout>
         </LinearLayout>
 
-
-
-
-
-
-        <!-- Extra fields for Gov Employee -->
-        <EditText
-            android:id="@+id/id_card_upload"
+        <ImageView
+            android:id="@+id/myImage"
+            android:layout_marginTop="80dp"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Upload Official ID Card (Tap to Upload)"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="8dp"
-            android:focusable="false"
-            android:clickable="true"
-            android:visibility="gone"/>
-
-        <EditText
-            android:id="@+id/office_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Office Name"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="8dp"
-            android:visibility="gone"/>
-
-        <EditText
-            android:id="@+id/designation"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Designation"
-            android:background="@drawable/edittext_bg"
-            android:padding="12dp"
-            android:textSize="12sp"
-            android:layout_marginBottom="16dp"
-            android:visibility="gone"/>
-
-        <!-- Signup Button -->
-        <Button
-            android:id="@+id/signup_button"
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:text="Signup"
-            android:layout_gravity="center"
-            android:backgroundTint="@color/teal_700"
-            android:textColor="@android:color/white"
-            android:textSize="20sp"/>
-
-        <!-- Login redirect -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:layout_marginTop="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Already have an Account?"
-                android:layout_gravity="center" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=" Login"
-                android:layout_gravity="center"
-                android:layout_marginLeft="170dp"
-                android:textColor="@color/teal_700"/>
-        </RelativeLayout>
+            android:layout_height="100dp"
+            android:scaleType="fitXY"
+            android:src="@drawable/my3x_flip" />
     </LinearLayout>
 </ScrollView>

@@ -1,37 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:background="@color/white">
 
-    <TextView
-        android:id="@+id/emailTextView"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Email:"
-        android:textSize="18sp"
-        android:layout_marginBottom="10dp" />
+        android:orientation="vertical"
+        android:padding="20dp">
 
-    <TextView
-        android:id="@+id/nameTextView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Name:"
-        android:textSize="18sp"
-        android:layout_marginBottom="10dp" />
+        <TextView
+            android:id="@+id/emailTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Email:"
+            android:textSize="18sp"
+            android:layout_marginBottom="10dp" />
 
-    <TextView
-        android:id="@+id/dateTextView"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Login Date:"
-        android:textSize="18sp"
-        android:layout_marginBottom="20dp" />
+        <TextView
+            android:id="@+id/nameTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Name:"
+            android:textSize="18sp"
+            android:layout_marginBottom="10dp" />
 
-    <Button
-        android:id="@+id/logoutButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Logout" />
-</LinearLayout>
+        <TextView
+            android:id="@+id/dateTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Login Date:"
+            android:textSize="18sp"
+            android:layout_marginBottom="10dp" />
+
+        <!-- Gov employee specific fields -->
+        <TextView
+            android:id="@+id/officeTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Office:"
+            android:textSize="18sp"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/designationTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Designation:"
+            android:textSize="18sp"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/idCardTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ID Card Number:"
+            android:textSize="18sp"
+            android:layout_marginBottom="20dp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/logoutButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Logout" />
+    </LinearLayout>
+</ScrollView>
