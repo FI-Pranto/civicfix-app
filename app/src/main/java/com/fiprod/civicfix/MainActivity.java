@@ -26,12 +26,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Hide the Action Bar
+
         if (getSupportActionBar() != null) {
             getSupportActionBar().hide();
         }
 
-        // Hide Status Bar and Navigation Bar for fullscreen immersive mode
+
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN |
                         View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
