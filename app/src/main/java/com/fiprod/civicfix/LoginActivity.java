@@ -16,6 +16,8 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -38,12 +40,12 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Hide the Action Bar
+
         if (getSupportActionBar() != null) {
             getSupportActionBar().hide();
         }
 
-        // Hide Status Bar and Navigation Bar for fullscreen immersive mode
+
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN |
                         View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
@@ -73,17 +75,27 @@ public class LoginActivity extends AppCompatActivity {
                 Toast.makeText(this, "No internet connection. Please enable internet.", Toast.LENGTH_LONG).show();
                 return;
             }
-            if (!email.isEmpty()) {
-                mAuth.sendPasswordResetEmail(email).addOnSuccessListener(aVoid ->
-                        Toast.makeText(this, "Reset email sent!", Toast.LENGTH_SHORT).show());
-            } else {
+
+            if (email.isEmpty()) {
                 Toast.makeText(this, "Enter email", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            FirebaseAuth mAuth = FirebaseAuth.getInstance();
+            FirebaseUser user = mAuth.getCurrentUser();
+            if (user != null && user.isEmailVerified()) {
+                mAuth.sendPasswordResetEmail(email)
+                        .addOnSuccessListener(aVoid -> Toast.makeText(this, "Reset email sent!", Toast.LENGTH_SHORT).show())
+                        .addOnFailureListener(e -> Toast.makeText(this, "Failed to send reset email.", Toast.LENGTH_SHORT).show());
+            } else {
+                Toast.makeText(this, "You need to verify your email first.", Toast.LENGTH_SHORT).show();
             }
         });
 
+
         registerBtn.setOnClickListener(v -> {
             startActivity(new Intent(this, RegisterActivity.class));
-            finish(); // Move finish() inside the listener
+            finish();
         });
 
     }
@@ -92,25 +104,52 @@ public class LoginActivity extends AppCompatActivity {
         String email = emailET.getText().toString().trim();
         String password = passwordET.getText().toString().trim();
 
-        if (!isValidInput(email, password)) {
-            return;
-        }
-
-
         if (!isConnected(this)) {
             Toast.makeText(this, "No internet connection. Please enable internet.", Toast.LENGTH_LONG).show();
             return;
         }
 
+        if (!isValidInput(email, password)) {
+            return;
+        }
+
+
+
+
         mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                startActivity(new Intent(this, MainActivity.class));
-                finish();
+                if (mAuth.getCurrentUser().isEmailVerified()) {
+
+                    updateUserVerifiedInFirestore();
+                    startActivity(new Intent(this, MainActivity.class));
+                    finish();
+                } else {
+
+                    Toast.makeText(this, "Please verify your email first.", Toast.LENGTH_LONG).show();
+                    mAuth.signOut();
+                }
             } else {
                 Toast.makeText(this, "Login Failed: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
+    private void updateUserVerifiedInFirestore() {
+        if (!isConnected(this)) {
+            Toast.makeText(this, "No internet connection. Please enable internet.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        db.collection("users").document(uid)
+                .update("verified", true)
+                .addOnSuccessListener(aVoid -> {
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to update verification status.", Toast.LENGTH_SHORT).show();
+                });
+    }
+
 
     // 🔌 Internet checker
     private boolean isConnected(Context context) {
