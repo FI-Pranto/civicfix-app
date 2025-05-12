@@ -6,10 +6,13 @@ import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,12 +22,17 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.List;
+
 public class LoginActivity extends AppCompatActivity {
 
     EditText emailET, passwordET;
     Button loginBtn;
+    ImageView togglePasswordVisibility;
     TextView forgotPassBtn, registerBtn;
     FirebaseAuth mAuth;
+
+    boolean isPasswordVisible = false;
 
     @Override
     protected void onStart() {
@@ -67,10 +75,13 @@ public class LoginActivity extends AppCompatActivity {
         forgotPassBtn = findViewById(R.id.forgot_password);
         registerBtn = findViewById(R.id.signup_now);
 
+        togglePasswordVisibility = findViewById(R.id.togglePasswordVisibility);
+
         loginBtn.setOnClickListener(v -> loginUser());
 
         forgotPassBtn.setOnClickListener(v -> {
             String email = emailET.getText().toString().trim();
+
             if (!isConnected(this)) {
                 Toast.makeText(this, "No internet connection. Please enable internet.", Toast.LENGTH_LONG).show();
                 return;
@@ -82,20 +93,45 @@ public class LoginActivity extends AppCompatActivity {
             }
 
             FirebaseAuth mAuth = FirebaseAuth.getInstance();
-            FirebaseUser user = mAuth.getCurrentUser();
-            if (user != null && user.isEmailVerified()) {
-                mAuth.sendPasswordResetEmail(email)
-                        .addOnSuccessListener(aVoid -> Toast.makeText(this, "Reset email sent!", Toast.LENGTH_SHORT).show())
-                        .addOnFailureListener(e -> Toast.makeText(this, "Failed to send reset email.", Toast.LENGTH_SHORT).show());
-            } else {
-                Toast.makeText(this, "You need to verify your email first.", Toast.LENGTH_SHORT).show();
-            }
+
+            // Check if the email is registered
+            mAuth.fetchSignInMethodsForEmail(email)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            List<String> signInMethods = task.getResult().getSignInMethods();
+                            if (signInMethods != null && !signInMethods.isEmpty()) {
+                                // Email is registered, now send password reset email
+                                mAuth.sendPasswordResetEmail(email)
+                                        .addOnSuccessListener(aVoid -> Toast.makeText(this, "Reset email sent!", Toast.LENGTH_SHORT).show())
+                                        .addOnFailureListener(e -> Toast.makeText(this, "Failed to send reset email.", Toast.LENGTH_SHORT).show());
+                            } else {
+                                // Email is not registered
+                                Toast.makeText(this, "Email not registered.", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            // Failed to check email existence
+                            Toast.makeText(this, "Failed to check email existence.", Toast.LENGTH_SHORT).show();
+                        }
+                    });
         });
+
 
 
         registerBtn.setOnClickListener(v -> {
             startActivity(new Intent(this, RegisterActivity.class));
             finish();
+        });
+
+        togglePasswordVisibility.setOnClickListener(v -> {
+            isPasswordVisible = !isPasswordVisible;
+            if (isPasswordVisible) {
+                passwordET.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                togglePasswordVisibility.setImageResource(R.drawable.ic_eye); // change to open eye icon
+            } else {
+                passwordET.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                togglePasswordVisibility.setImageResource(R.drawable.ic_eye_off); // change back to eye-off icon
+            }
+            passwordET.setSelection(passwordET.getText().length());
         });
 
     }

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:background="@color/white"
     android:fillViewport="true">
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -63,17 +64,37 @@
                 android:textSize="12sp"
                 android:layout_marginBottom="12dp" />
 
-            <EditText
-                android:id="@+id/password_input"
+            <!-- Password section with toggle button aligned properly -->
+            <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColorHint="@color/gray_dark"
-                android:hint="Password"
-                android:inputType="textPassword"
-                android:textSize="12sp"
-                android:textColor="@color/black"
-                android:background="@drawable/edittext_bg"
-                android:padding="12dp" />
+                android:layout_marginBottom="16dp">
+
+                <EditText
+                    android:id="@+id/password_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/edittext_bg"
+                    android:hint="Password"
+                    android:inputType="textPassword"
+                    android:padding="12dp"
+                    android:textColor="@color/black"
+                    android:textColorHint="@color/gray_dark"
+                    android:textSize="12sp" />
+
+                <ImageView
+                    android:id="@+id/togglePasswordVisibility"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginEnd="12dp"
+                    android:src="@drawable/ic_eye_off"
+                    android:contentDescription="Toggle Password Visibility"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:tint="@color/teal_700" />
+            </RelativeLayout>
 
             <TextView
                 android:id="@+id/forgot_password"
