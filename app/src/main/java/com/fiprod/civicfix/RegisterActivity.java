@@ -6,12 +6,15 @@ import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,6 +38,12 @@ public class RegisterActivity extends AppCompatActivity {
 
     FirebaseAuth mAuth;
     FirebaseFirestore db;
+
+    ImageView togglePassword;
+    ImageView toggleConfirmPassword;
+
+    private boolean isPasswordVisible = false;
+    private boolean isConfirmPasswordVisible = false;
 
     String selectedRole = "Citizen"; // default
 
@@ -72,6 +81,9 @@ public class RegisterActivity extends AppCompatActivity {
         verifyMail = findViewById(R.id.verifyMail);
         verifyMail.setVisibility(View.GONE);
 
+        togglePassword = findViewById(R.id.toggle_password);
+        toggleConfirmPassword = findViewById(R.id.toggle_confirm_password);
+
         roleSpinner = findViewById(R.id.account_type_spinner);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,
@@ -101,6 +113,29 @@ public class RegisterActivity extends AppCompatActivity {
         loginNow.setOnClickListener(v -> {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
+        });
+
+        togglePassword.setOnClickListener(v -> {
+            isPasswordVisible = !isPasswordVisible;
+            if (isPasswordVisible) {
+                passwordET.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                togglePassword.setImageResource(R.drawable.ic_eye); // open eye icon
+            } else {
+                passwordET.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                togglePassword.setImageResource(R.drawable.ic_eye_off); // closed eye icon
+            }
+            passwordET.setSelection(passwordET.getText().length());
+        });
+        toggleConfirmPassword.setOnClickListener(v -> {
+            isConfirmPasswordVisible = !isConfirmPasswordVisible;
+            if (isConfirmPasswordVisible) {
+                confirmPasswordET.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+                toggleConfirmPassword.setImageResource(R.drawable.ic_eye); // open eye icon
+            } else {
+                confirmPasswordET.setTransformationMethod(PasswordTransformationMethod.getInstance());
+                toggleConfirmPassword.setImageResource(R.drawable.ic_eye_off); // closed eye icon
+            }
+            confirmPasswordET.setSelection(confirmPasswordET.getText().length());
         });
     }
 
