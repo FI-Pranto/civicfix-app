@@ -136,6 +136,7 @@
                         android:padding="16dp">
 
                         <TextView
+                            android:id="@+id/cardTitle1"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Reported Issues"
@@ -144,6 +145,7 @@
                             android:textColor="@color/black" />
 
                         <TextView
+                            android:id="@+id/cardText1"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Total: 18 issues reported by you."
@@ -169,6 +171,7 @@
                         android:padding="16dp">
 
                         <TextView
+                            android:id="@+id/cardTitle2"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Issues Pending"
@@ -177,6 +180,7 @@
                             android:textColor="@color/black" />
 
                         <TextView
+                            android:id="@+id/cardText2"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Currently 6 issues are under review or pending response."
@@ -202,6 +206,7 @@
                         android:padding="16dp">
 
                         <TextView
+                            android:id="@+id/cardTitle3"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Issues Resolved"
@@ -210,6 +215,7 @@
                             android:textColor="@color/black" />
 
                         <TextView
+                            android:id="@+id/cardText3"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="10 issues have been successfully resolved."

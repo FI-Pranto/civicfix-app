@@ -161,11 +161,11 @@ public class LoginActivity extends AppCompatActivity {
                         if (document.exists()) {
                             String role = document.getString("role");
 
-                            if ("govt".equalsIgnoreCase(role)) {
+                            if ("Government Employee".equalsIgnoreCase(role)) {
                                 // Only check verifiedDoc if role is govt
                                 Boolean verifiedDoc = document.getBoolean("verifiedDoc");
                                 if (verifiedDoc != null && verifiedDoc) {
-                                    updateUserVerifiedInFirestore(); // optional
+                                    updateUserVerifiedInFirestore();
                                     startActivity(new Intent(this, MainActivity.class));
                                     finish();
                                 } else {
@@ -173,8 +173,7 @@ public class LoginActivity extends AppCompatActivity {
                                     mAuth.signOut();
                                 }
                             } else {
-                                // Citizen or any other role
-                                updateUserVerifiedInFirestore(); // optional
+                                updateUserVerifiedInFirestore();
                                 startActivity(new Intent(this, MainActivity.class));
                                 finish();
                             }
