@@ -44,6 +44,9 @@ public class RegisterActivity extends AppCompatActivity {
 
     private boolean isPasswordVisible = false;
     private boolean isConfirmPasswordVisible = false;
+    Spinner districtSpinner;
+    String selectedDistrict = "";
+
 
     String selectedRole = "Citizen"; // default
 
@@ -83,6 +86,40 @@ public class RegisterActivity extends AppCompatActivity {
 
         togglePassword = findViewById(R.id.toggle_password);
         toggleConfirmPassword = findViewById(R.id.toggle_confirm_password);
+
+
+
+
+        districtSpinner = findViewById(R.id.district_spinner);
+
+        String[] bangladeshDistricts = {
+                "Select your district",
+                "Barguna", "Barisal", "Bhola", "Jhalokati", "Patuakhali", "Pirojpur",
+                "Bandarban", "Brahmanbaria", "Chandpur", "Chattogram", "Cumilla", "Cox's Bazar", "Feni", "Khagrachhari", "Lakshmipur", "Noakhali", "Rangamati",
+                "Dhaka", "Faridpur", "Gazipur", "Gopalganj", "Kishoreganj", "Madaripur", "Manikganj", "Munshiganj", "Narayanganj", "Narsingdi", "Rajbari", "Shariatpur", "Tangail",
+                "Bagerhat", "Chuadanga", "Jashore", "Jhenaidah", "Khulna", "Kushtia", "Magura", "Meherpur", "Narail", "Satkhira",
+                "Jamalpur", "Mymensingh", "Netrokona", "Sherpur",
+                "Bogura", "Joypurhat", "Naogaon", "Natore", "Chapai Nawabganj", "Pabna", "Rajshahi", "Sirajganj",
+                "Dinajpur", "Gaibandha", "Kurigram", "Lalmonirhat", "Nilphamari", "Panchagarh", "Rangpur", "Thakurgaon",
+                "Habiganj", "Maulvibazar", "Sunamganj", "Sylhet"
+        };
+
+        ArrayAdapter<String> districtAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, bangladeshDistricts);
+        districtAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        districtSpinner.setAdapter(districtAdapter);
+
+        districtSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                selectedDistrict = parent.getItemAtPosition(position).toString();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+
+
 
         roleSpinner = findViewById(R.id.account_type_spinner);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
@@ -194,16 +231,19 @@ public class RegisterActivity extends AppCompatActivity {
                                 userMap.put("role", selectedRole);
                                 userMap.put("loginDate", FieldValue.serverTimestamp());
                                 userMap.put("verified", false);
+                                userMap.put("district", selectedDistrict);
 
                                 if (selectedRole.equals("Government Employee")) {
                                     userMap.put("officeName", office);
                                     userMap.put("designation", designation);
                                     userMap.put("idCardNumber", idCardNumber);
+                                    userMap.put("verifiedDoc", false);
+
                                 }
 
                                 saveUserData(uid, userMap);
 
-                                mAuth.signOut(); // Prevent auto-login
+                                mAuth.signOut();
                             })
                             .addOnFailureListener(e ->
                                     Toast.makeText(this, "Failed to send verification email.", Toast.LENGTH_SHORT).show()
@@ -312,6 +352,11 @@ public class RegisterActivity extends AppCompatActivity {
                 Toast.makeText(this, "ID card number is required", Toast.LENGTH_SHORT).show();
                 return false;
             }
+
+        }
+        if (selectedDistrict.equals("Select your district")||selectedDistrict.isEmpty()) {
+            Toast.makeText(this, "Select your district", Toast.LENGTH_SHORT).show();
+            return false;
         }
 
         return true;

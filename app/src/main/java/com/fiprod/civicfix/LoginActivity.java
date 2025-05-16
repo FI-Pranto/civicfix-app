@@ -149,18 +149,45 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
-
-
-
         mAuth.signInWithEmailAndPassword(email, password).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                if (mAuth.getCurrentUser().isEmailVerified()) {
+                FirebaseUser user = mAuth.getCurrentUser();
 
-                    updateUserVerifiedInFirestore();
-                    startActivity(new Intent(this, MainActivity.class));
-                    finish();
+                if (user != null && user.isEmailVerified()) {
+                    String uid = user.getUid();
+                    FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+                    db.collection("users").document(uid).get().addOnSuccessListener(document -> {
+                        if (document.exists()) {
+                            String role = document.getString("role");
+
+                            if ("govt".equalsIgnoreCase(role)) {
+                                // Only check verifiedDoc if role is govt
+                                Boolean verifiedDoc = document.getBoolean("verifiedDoc");
+                                if (verifiedDoc != null && verifiedDoc) {
+                                    updateUserVerifiedInFirestore(); // optional
+                                    startActivity(new Intent(this, MainActivity.class));
+                                    finish();
+                                } else {
+                                    Toast.makeText(this, "Please wait while we verify your documents.", Toast.LENGTH_LONG).show();
+                                    mAuth.signOut();
+                                }
+                            } else {
+                                // Citizen or any other role
+                                updateUserVerifiedInFirestore(); // optional
+                                startActivity(new Intent(this, MainActivity.class));
+                                finish();
+                            }
+                        } else {
+                            Toast.makeText(this, "User profile not found in Firestore.", Toast.LENGTH_SHORT).show();
+                            mAuth.signOut();
+                        }
+                    }).addOnFailureListener(e -> {
+                        Toast.makeText(this, "Failed to retrieve user data.", Toast.LENGTH_SHORT).show();
+                        mAuth.signOut();
+                    });
+
                 } else {
-
                     Toast.makeText(this, "Please verify your email first.", Toast.LENGTH_LONG).show();
                     mAuth.signOut();
                 }
@@ -169,6 +196,7 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
     }
+
     private void updateUserVerifiedInFirestore() {
         if (!isConnected(this)) {
             Toast.makeText(this, "No internet connection. Please enable internet.", Toast.LENGTH_LONG).show();
@@ -187,7 +215,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
 
-    // 🔌 Internet checker
+    //  Internet checker
     private boolean isConnected(Context context) {
         ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netInfo = cm.getActiveNetworkInfo();

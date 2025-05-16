@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">CivicFix</string>
+    <string name="reported_issues">Reported Issues</string>
 </resources>
