@@ -6,4 +6,6 @@
     <color name="black">#000000</color>
     <color name="gray_dark">#757575</color>
     <color name="edittext_stroke">#009688</color>
+    <color name="teal_50">#E0F7FA</color>
+    <color name="teal_300">#64C3BF</color>
 </resources>
