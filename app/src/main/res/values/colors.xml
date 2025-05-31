@@ -8,4 +8,5 @@
     <color name="edittext_stroke">#009688</color>
     <color name="teal_50">#E0F7FA</color>
     <color name="teal_300">#64C3BF</color>
+    <color name="light_background">#E6F5F3</color>
 </resources>
