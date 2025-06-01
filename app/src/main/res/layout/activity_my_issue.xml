@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#D4F5F4">
+
+    <!-- White Rounded Top Container -->
+    <LinearLayout
+        android:id="@+id/top_white_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/rounded_top_white_bg"
+        android:elevation="4dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="10dp"
+        android:layout_alignParentTop="true">
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/text_my_issues"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="My Issues"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:textColor="@color/teal_700"
+            android:paddingBottom="12dp" />
+
+ <!-- Light teal divider -->
+    </LinearLayout>
+
+    <!-- Main Content Area Below the White Top -->
+    <LinearLayout
+        android:id="@+id/container_card"
+        android:layout_below="@id/top_white_container"
+        android:layout_above="@id/bottom_navigation"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="8dp"
+        android:background="#EFFFFF"> <!-- Light teal-like background -->
+
+        <!-- Add New Issue Button -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/button_add_issue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+ Add New Issue"
+            android:textColor="@android:color/white"
+            android:layout_gravity="center_horizontal"
+            android:paddingHorizontal="20dp"
+            android:paddingVertical="8dp"
+            android:background="@drawable/rounded_button_bg"
+            android:textStyle="bold" />
+
+        <!-- RecyclerView -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_my_issues"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="16dp"
+            android:clipToPadding="false"
+            android:paddingBottom="72dp" />
+    </LinearLayout>
+
+    <!-- Bottom Navigation Bar -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="@color/white"
+        app:menu="@menu/bottom_nav_menu"
+        app:itemIconTint="@color/bottom_nav_selector"
+        app:itemTextColor="@color/bottom_nav_selector"
+        app:labelVisibilityMode="labeled" />
+</RelativeLayout>

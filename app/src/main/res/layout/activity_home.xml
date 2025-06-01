@@ -5,17 +5,28 @@
     android:layout_height="match_parent"
     android:background="@color/light_background">
 
-    <!-- App Title -->
-    <TextView
-        android:id="@+id/text_title"
-        android:layout_width="wrap_content"
+    <!-- White Header with Rounded Top -->
+    <LinearLayout
+        android:id="@+id/header_container"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="CivicFix"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:textColor="@color/teal_700"
-        android:layout_marginTop="20dp"
-        android:layout_centerHorizontal="true" />
+        android:orientation="vertical"
+        android:background="@drawable/rounded_top_white_bg"
+        android:paddingTop="18dp"
+        android:paddingBottom="10dp"
+        android:elevation="4dp">
+
+        <!-- App Title -->
+        <TextView
+            android:id="@+id/text_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CivicFix"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/teal_700"
+            android:layout_gravity="center_horizontal" />
+    </LinearLayout>
 
     <!-- Search & Filter Section -->
     <LinearLayout
@@ -23,7 +34,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_below="@id/text_title"
+        android:layout_below="@id/header_container"
         android:layout_marginTop="16dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
@@ -52,19 +63,6 @@
             android:background="@drawable/spinner_background"
             android:paddingHorizontal="8dp" />
     </LinearLayout>
-
-    <!-- RecyclerView List of Issues -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_issues"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/search_filter_row"
-        android:layout_marginTop="16dp"
-        android:paddingBottom="72dp"
-        android:clipToPadding="false"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp" />
-
     <!-- Bottom Navigation Bar -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
         android:id="@+id/bottom_navigation"
@@ -76,4 +74,5 @@
         app:itemIconTint="@color/bottom_nav_selector"
         app:itemTextColor="@color/bottom_nav_selector"
         app:labelVisibilityMode="labeled" />
+
 </RelativeLayout>
