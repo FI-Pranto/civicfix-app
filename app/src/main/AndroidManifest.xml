@@ -15,6 +15,15 @@
         android:theme="@style/Theme.CivicFix"
         tools:targetApi="31">
         <activity
+            android:name=".IssueDetailsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AddIssueActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MyIssueActivity"
+            android:exported="false" />
+        <activity
             android:name=".HomeActivity"
             android:exported="false" />
         <activity
