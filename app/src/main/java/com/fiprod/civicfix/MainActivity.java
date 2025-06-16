@@ -28,6 +28,11 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.HashMap;
 
+
+import androidx.annotation.NonNull;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+import android.view.MenuItem;
+
 public class MainActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
@@ -38,11 +43,46 @@ public class MainActivity extends AppCompatActivity {
     private TextView cardTitle1,cardTitle2,cardTitle3,cardText1,cardText2,cardText3;
     private ImageView logoutIcon;
 
+    private BottomNavigationView bottomNavigationView;
+
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main); // Ensure this is correct XML layout
+
+        // Initialize bottom navigation
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        bottomNavigationView.setSelectedItemId(R.id.nav_profile);
+
+        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int itemId = item.getItemId();
+
+                if (itemId == R.id.nav_home) {
+                    startActivity(new Intent(getApplicationContext(), HomeActivity.class));
+                    overridePendingTransition(0, 0);
+                    return true;
+
+                } else if (itemId == R.id.nav_search) {
+                    // Uncomment when you create SearchActivity
+                    // startActivity(new Intent(getApplicationContext(), SearchActivity.class));
+                    // overridePendingTransition(0, 0);
+                    return true;
+
+                } else if (itemId == R.id.nav_issues) {
+                    startActivity(new Intent(getApplicationContext(), MyIssueActivity.class));
+                    overridePendingTransition(0, 0);
+                    return true;
+
+                } else if (itemId == R.id.nav_profile) {
+                    return true; // Already on profile
+                }
+
+                return false;
+            }
+        });
 
         mAuth = FirebaseAuth.getInstance();
         firestore = FirebaseFirestore.getInstance();

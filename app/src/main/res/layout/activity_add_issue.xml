@@ -28,6 +28,7 @@
                 android:padding="16dp">
 
                 <ImageView
+                    android:id="@+id/backToNav"
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:layout_marginEnd="12dp"
@@ -92,6 +93,7 @@
                         android:layout_height="wrap_content"
                         android:hint="Enter issue title..."
                         android:textColorHint="#999999"
+                        android:textColor="@color/black"
                         android:textSize="16sp" />
 
                 </com.google.android.material.textfield.TextInputLayout>
@@ -128,6 +130,7 @@
                         android:hint="Describe the issue..."
                         android:inputType="textMultiLine"
                         android:textColorHint="#999999"
+                        android:textColor="@color/black"
                         android:textSize="16sp" />
 
                 </com.google.android.material.textfield.TextInputLayout>
@@ -147,6 +150,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="56dp"
                     android:layout_marginBottom="20dp"
+                    android:textColor="@color/black"
                     android:background="@drawable/spinner_background"
                     android:paddingHorizontal="16dp" />
 
@@ -172,6 +176,7 @@
                     android:orientation="vertical">
 
                     <ImageView
+                        android:id="@+id/uploadImageView"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:layout_marginBottom="12dp"
@@ -179,6 +184,7 @@
                         app:tint="#666666" />
 
                     <TextView
+                        android:id="@+id/uploadTextView"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Click to upload image"
@@ -217,6 +223,7 @@
                         android:layout_height="wrap_content"
                         android:hint="e.g. Near XYZ School"
                         android:textColorHint="#999999"
+                        android:textColor="@color/black"
                         android:textSize="16sp" />
 
                 </com.google.android.material.textfield.TextInputLayout>
