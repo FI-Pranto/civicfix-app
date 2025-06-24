@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
@@ -74,6 +75,25 @@ public class IssueDetailsActivity extends AppCompatActivity {
         String timestamp = getIntent().getStringExtra("timestamp");
         String handledBy = getIntent().getStringExtra("handledBy");
 
+        if (status != null) {
+            switch (status.toUpperCase()) {
+                case "DONE":
+                    tvStatus.setBackgroundResource(R.drawable.status_resolved); // green bg
+                    tvStatus.setTextColor(Color.WHITE);
+                    break;
+                case "IN_PROGRESS":
+                    tvStatus.setBackgroundResource(R.drawable.status_in_progress); // blue bg
+                    tvStatus.setTextColor(Color.WHITE);
+                    break;
+                case "PENDING":
+                default:
+                    tvStatus.setBackgroundResource(R.drawable.status_pending); // yellow bg
+                    tvStatus.setTextColor(Color.WHITE);
+                    break;
+            }
+        }
+
+
         tvTitle.setText(title);
         tvDescription.setText(description);
         tvCategory.setText(category);
@@ -126,16 +146,16 @@ public class IssueDetailsActivity extends AppCompatActivity {
                             String firstName = doc.getString("firstName");
                             String lastName = doc.getString("lastName");
                             String fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
-                            tvHandledBy.setText("This issue is being handled by: " + (fullName.isEmpty() ? "Unknown" : fullName));
+                            tvHandledBy.setText("This issue is handled by: " + (fullName.isEmpty() ? "Unknown" : fullName));
                         } else {
-                            tvHandledBy.setText("This issue is being handled by: Unknown");
+                            tvHandledBy.setText("This issue is handled by: Unknown");
                         }
                     })
                     .addOnFailureListener(e ->
-                            tvHandledBy.setText("This issue is being handled by: Unknown")
+                            tvHandledBy.setText("This issue is handled by: Unknown")
                     );
         } else {
-            tvHandledBy.setText("This issue is being handled by: Not assigned");
+            tvHandledBy.setText("This issue is handled by: Not assigned");
         }
 
 
@@ -173,7 +193,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
         backHome.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish(); // Just go back without showing dialog
+                finish();
             }
         });
 
@@ -224,10 +244,26 @@ public class IssueDetailsActivity extends AppCompatActivity {
                             tvStatus.setBackgroundResource(R.drawable.status_pending);
                             issueRef.child("handledBy").removeValue();
                             tvHandledBy.setText("This issue is being handled by: Not assigned");
+
+                            // Decrease gov.issue_in_progress by 1 if previously assigned
+                            DatabaseReference govRefPending = FirebaseDatabase.getInstance().getReference("profile/gov").child(userId);
+                            govRefPending.child("issue_in_progress").addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    Long val = snapshot.getValue(Long.class);
+                                    if (val != null && val > 0) {
+                                        govRefPending.child("issue_in_progress").setValue(val - 1);
+                                        updateGovTotalIssueTaken(govRefPending);
+                                    }
+                                }
+                                @Override public void onCancelled(@NonNull DatabaseError error) {}
+                            });
                             break;
+
                         case "IN_PROGRESS":
                             tvStatus.setBackgroundResource(R.drawable.status_in_progress);
                             issueRef.child("handledBy").setValue(userId);
+
                             FirebaseFirestore.getInstance().collection("users")
                                     .document(userId)
                                     .get()
@@ -241,16 +277,85 @@ public class IssueDetailsActivity extends AppCompatActivity {
                                             tvHandledBy.setText("This issue is being handled by: Unknown");
                                         }
                                     })
-                                    .addOnFailureListener(e ->
-                                            tvHandledBy.setText("This issue is being handled by: Unknown")
-                                    );
+                                    .addOnFailureListener(e -> tvHandledBy.setText("This issue is being handled by: Unknown"));
+
+                            // Increase gov.issue_in_progress by 1
+                            DatabaseReference govRef = FirebaseDatabase.getInstance().getReference("profile/gov").child(userId);
+                            govRef.child("issue_in_progress").addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    long current = snapshot.getValue(Long.class) != null ? snapshot.getValue(Long.class) : 0;
+                                    govRef.child("issue_in_progress").setValue(current + 1);
+                                    updateGovTotalIssueTaken(govRef);
+                                }
+                                @Override public void onCancelled(@NonNull DatabaseError error) {}
+                            });
                             break;
+
                         case "DONE":
                             tvStatus.setBackgroundResource(R.drawable.status_resolved);
                             issueRef.child("isDone").setValue(true);
                             spinnerStatus.setVisibility(View.GONE);
+
+                            // Update gov profile
+                            DatabaseReference govDoneRef = FirebaseDatabase.getInstance().getReference("profile/gov").child(userId);
+
+                            govDoneRef.child("issue_in_progress").addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    long inProgress = snapshot.getValue(Long.class) != null ? snapshot.getValue(Long.class) : 0;
+                                    if (inProgress > 0) {
+                                        govDoneRef.child("issue_in_progress").setValue(inProgress - 1);
+                                    }
+
+                                    // Increment issue_resolved
+                                    govDoneRef.child("issue_resolved").addListenerForSingleValueEvent(new ValueEventListener() {
+                                        @Override
+                                        public void onDataChange(@NonNull DataSnapshot snap) {
+                                            long resolved = snap.getValue(Long.class) != null ? snap.getValue(Long.class) : 0;
+                                            govDoneRef.child("issue_resolved").setValue(resolved + 1);
+                                            updateGovTotalIssueTaken(govDoneRef);
+                                        }
+                                        @Override public void onCancelled(@NonNull DatabaseError error) {}
+                                    });
+                                }
+                                @Override public void onCancelled(@NonNull DatabaseError error) {}
+                            });
+
+                            // Update citizen profile: resolved_by_gov++
+                            issueRef.child("submittedBy").child("userId").addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                    String citizenId = snapshot.getValue(String.class);
+                                    if (citizenId != null) {
+                                        DatabaseReference citizenRef = FirebaseDatabase.getInstance().getReference("profile/citizen").child(citizenId);
+                                        citizenRef.child("resolved_by_gov").addListenerForSingleValueEvent(new ValueEventListener() {
+                                            @Override
+                                            public void onDataChange(@NonNull DataSnapshot snap) {
+                                                long resolvedByGov = snap.getValue(Long.class) != null ? snap.getValue(Long.class) : 0;
+                                                citizenRef.child("resolved_by_gov").setValue(resolvedByGov + 1);
+
+                                                // Update pending_issues = issue_submitted - resolved_by_gov
+                                                citizenRef.child("issue_submitted").addListenerForSingleValueEvent(new ValueEventListener() {
+                                                    @Override
+                                                    public void onDataChange(@NonNull DataSnapshot subSnap) {
+                                                        long submitted = subSnap.getValue(Long.class) != null ? subSnap.getValue(Long.class) : 0;
+                                                        citizenRef.child("pending_issues").setValue(submitted - (resolvedByGov + 1));
+                                                    }
+                                                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                                                });
+                                            }
+
+                                            @Override public void onCancelled(@NonNull DatabaseError error) {}
+                                        });
+                                    }
+                                }
+
+                                @Override public void onCancelled(@NonNull DatabaseError error) {}
+                            });
                             break;
                     }
+
 
                     issueRef.child("status")
                             .setValue(newStatus)
@@ -275,4 +380,25 @@ public class IssueDetailsActivity extends AppCompatActivity {
             return "Unknown";
         }
     }
+
+    private void updateGovTotalIssueTaken(DatabaseReference govRef) {
+        govRef.child("issue_in_progress").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot inProgressSnap) {
+                long inProgress = inProgressSnap.getValue(Long.class) != null ? inProgressSnap.getValue(Long.class) : 0;
+                govRef.child("issue_resolved").addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot resolvedSnap) {
+                        long resolved = resolvedSnap.getValue(Long.class) != null ? resolvedSnap.getValue(Long.class) : 0;
+                        govRef.child("total_issue_taken").setValue(inProgress + resolved);
+                    }
+
+                    @Override public void onCancelled(@NonNull DatabaseError error) {}
+                });
+            }
+
+            @Override public void onCancelled(@NonNull DatabaseError error) {}
+        });
+    }
+
 }
