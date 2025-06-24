@@ -195,16 +195,16 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 if (!snapshot.exists()) {
-                    // Initialize default values
                     HashMap<String, Object> defaultStats = new HashMap<>();
                     if (roleKey.equals("citizen")) {
                         defaultStats.put("issue_submitted", 0);
                         defaultStats.put("resloved_by_gov", 0);
                         defaultStats.put("pending_issues", 0);
                     } else {
+                        defaultStats.put("total_issue_taken", 0);
                         defaultStats.put("issue_in_progress", 0);
                         defaultStats.put("issue_resloved", 0);
-                        defaultStats.put("issue_reported", 0);
+
                     }
                     userStatsRef.setValue(defaultStats);
                     updateUIStats(defaultStats, roleKey);
@@ -234,8 +234,9 @@ public class MainActivity extends AppCompatActivity {
             cardText1.setText("Total Issue Resolved by user: " + stats.get("issue_resloved"));
             cardTitle2.setText("Issues In Progress");
             cardText2.setText("Total Issues taken by user and In Progress: " + stats.get("issue_in_progress"));
-            cardTitle3.setText("Issues Reported");
-            cardText3.setText("Resolved issues reported by citizens: " + stats.get("issue_reported"));
+            cardTitle3.setText("Total Issue Taken");
+            cardText3.setText("Total Issue Taken To Resolve: " + stats.get("total_issue_taken"));
+
         }
     }
 

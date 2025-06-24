@@ -92,25 +92,24 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                Toast.makeText(this, "Invalid email format", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
             FirebaseAuth mAuth = FirebaseAuth.getInstance();
 
-            // Check if the email is registered
-            mAuth.fetchSignInMethodsForEmail(email)
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            List<String> signInMethods = task.getResult().getSignInMethods();
-                            if (signInMethods != null && !signInMethods.isEmpty()) {
-                                // Email is registered, now send password reset email
-                                mAuth.sendPasswordResetEmail(email)
-                                        .addOnSuccessListener(aVoid -> Toast.makeText(this, "Reset email sent!", Toast.LENGTH_SHORT).show())
-                                        .addOnFailureListener(e -> Toast.makeText(this, "Failed to send reset email.", Toast.LENGTH_SHORT).show());
-                            } else {
-                                // Email is not registered
-                                Toast.makeText(this, "Email not registered.", Toast.LENGTH_SHORT).show();
-                            }
+
+            mAuth.sendPasswordResetEmail(email)
+                    .addOnSuccessListener(aVoid -> {
+                        Toast.makeText(this, "If this email is registered, you will receive a password reset email.", Toast.LENGTH_LONG).show();
+                    })
+                    .addOnFailureListener(e -> {
+                        String errorMessage = e.getMessage();
+                        if (errorMessage != null && errorMessage.contains("no user record")) {
+                            Toast.makeText(this, "No account found with this email address.", Toast.LENGTH_SHORT).show();
                         } else {
-                            // Failed to check email existence
-                            Toast.makeText(this, "Failed to check email existence.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "Failed to send reset email. Please try again.", Toast.LENGTH_SHORT).show();
                         }
                     });
         });
@@ -162,8 +161,8 @@ public class LoginActivity extends AppCompatActivity {
                             String role = document.getString("role");
 
                             if ("Government Employee".equalsIgnoreCase(role)) {
-                                // Only check verifiedDoc if role is govt
                                 Boolean verifiedDoc = document.getBoolean("verifiedDoc");
+                                Toast.makeText(this, "hi"+verifiedDoc, Toast.LENGTH_LONG).show();
                                 if (verifiedDoc != null && verifiedDoc) {
                                     updateUserVerifiedInFirestore();
                                     startActivity(new Intent(this, MainActivity.class));

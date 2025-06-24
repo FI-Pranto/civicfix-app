@@ -145,7 +145,7 @@ public class RegisterActivity extends AppCompatActivity {
 
         signupBtn.setOnClickListener(v -> registerUser());
 
-        verifyMail.setOnClickListener(v -> resendVerificationEmail());
+       // verifyMail.setOnClickListener(v -> resendVerificationEmail());
 
         loginNow.setOnClickListener(v -> {
             startActivity(new Intent(this, LoginActivity.class));
@@ -220,7 +220,7 @@ public class RegisterActivity extends AppCompatActivity {
                     user.sendEmailVerification()
                             .addOnSuccessListener(unused -> {
                                 Toast.makeText(this, "Verification email sent. Please verify before logging in.", Toast.LENGTH_LONG).show();
-                                verifyMail.setVisibility(View.VISIBLE);
+                               // verifyMail.setVisibility(View.VISIBLE);
 
                                 String uid = user.getUid();
                                 Map<String, Object> userMap = new HashMap<>();
@@ -255,7 +255,7 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 
-    private void resendVerificationEmail() {
+/*    private void resendVerificationEmail() {
         if (!isConnected(this)) {
             Toast.makeText(this, "No internet connection.", Toast.LENGTH_LONG).show();
             return;
@@ -272,7 +272,7 @@ public class RegisterActivity extends AppCompatActivity {
         } else {
             Toast.makeText(this, "No user found or already verified.", Toast.LENGTH_SHORT).show();
         }
-    }
+    }*/
 
     private void saveUserData(String uid, Map<String, Object> userMap) {
         db.collection("users").document(uid).set(userMap).addOnSuccessListener(unused -> {

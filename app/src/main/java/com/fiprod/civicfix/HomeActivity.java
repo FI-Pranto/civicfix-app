@@ -22,11 +22,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,11 +44,20 @@ public class HomeActivity extends AppCompatActivity {
     private Spinner spinnerFilter;
     private BottomNavigationView bottomNavigationView;
 
+    // Add these variables for district filtering
+    private String userDistrict = "";
+    private FirebaseAuth mAuth;
+    private FirebaseFirestore firestore;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-       // EdgeToEdge.enable(this);
+        // EdgeToEdge.enable(this);
         setContentView(R.layout.activity_home);
+
+        // Initialize Firebase Auth and Firestore
+        mAuth = FirebaseAuth.getInstance();
+        firestore = FirebaseFirestore.getInstance();
 
         // Initialize views
         recyclerIssues = findViewById(R.id.recycler_issues);
@@ -62,9 +74,8 @@ public class HomeActivity extends AppCompatActivity {
         setupSpinner();
         setupSearchAndFilter();
 
-        // Load data
-        dbRef = FirebaseDatabase.getInstance().getReference("issues");
-        loadIssuesFromFirebase();
+        // Get user district and load data
+        getUserDistrictFromFirestore();
 
         // Setup bottom navigation (YOUR original logic)
         bottomNavigationView = findViewById(R.id.bottom_navigation);
@@ -80,9 +91,9 @@ public class HomeActivity extends AppCompatActivity {
 
                 } else if (itemId == R.id.nav_search) {
                     // Uncomment when you create SearchActivity
-                     startActivity(new Intent(getApplicationContext(), SearchUserActivity.class));
-                     overridePendingTransition(0, 0);
-                     finish();
+                    startActivity(new Intent(getApplicationContext(), SearchUserActivity.class));
+                    overridePendingTransition(0, 0);
+                    finish();
                     return true;
 
                 } else if (itemId == R.id.nav_issues) {
@@ -103,7 +114,82 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    private void loadIssuesFromFirebase() {
+    // Get user district from Firestore
+    private void getUserDistrictFromFirestore() {
+        if (mAuth.getCurrentUser() == null) {
+            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String userId = mAuth.getCurrentUser().getUid();
+
+        firestore.collection("users").document(userId)
+                .get()
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        DocumentSnapshot document = task.getResult();
+                        if (document.exists()) {
+                            userDistrict = document.getString("district");
+                            if (userDistrict == null) {
+                                userDistrict = "";
+                            }
+
+                            // Now load issues based on user's district
+                            loadDistrictIssuesFromFirebase();
+                        } else {
+                            Toast.makeText(HomeActivity.this, "User profile not found", Toast.LENGTH_SHORT).show();
+                            loadAllIssuesFromFirebase(); // Fallback
+                        }
+                    } else {
+                        Toast.makeText(HomeActivity.this, "Failed to get user data: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        loadAllIssuesFromFirebase(); // Fallback
+                    }
+                });
+    }
+
+    // Load issues filtered by user's district
+    private void loadDistrictIssuesFromFirebase() {
+        if (userDistrict.isEmpty()) {
+            Toast.makeText(this, "User district not found, showing all issues", Toast.LENGTH_SHORT).show();
+            loadAllIssuesFromFirebase();
+            return;
+        }
+
+        dbRef = FirebaseDatabase.getInstance().getReference("issues");
+
+        // Query issues by district
+        dbRef.orderByChild("district").equalTo(userDistrict)
+                .addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        issueList.clear();
+                        for (DataSnapshot snap : snapshot.getChildren()) {
+                            Issue issue = snap.getValue(Issue.class);
+                            if (issue != null) {
+                                issue.id = snap.getKey();
+                                issueList.add(issue);
+                            }
+                        }
+                        filterAndSearch();
+
+                        // Show message if no issues found
+                        if (issueList.isEmpty()) {
+                            Toast.makeText(HomeActivity.this,
+                                    "No issues found in " + userDistrict + " district",
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        Toast.makeText(HomeActivity.this, "Failed to load issues: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    // Fallback method to load all issues
+    private void loadAllIssuesFromFirebase() {
+        dbRef = FirebaseDatabase.getInstance().getReference("issues");
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -120,14 +206,15 @@ public class HomeActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-                Toast.makeText(HomeActivity.this, "Failed to load issues", Toast.LENGTH_SHORT).show();
+                Toast.makeText(HomeActivity.this, "Failed to load issues: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void setupSpinner() {
         String[] statuses = {"All", "PENDING", "IN_PROGRESS", "DONE"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, statuses);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.spinner_selected_item, statuses);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerFilter.setAdapter(adapter);
     }
 
@@ -172,13 +259,12 @@ public class HomeActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Exit App")
                 .setMessage("Do you want to exit the app?")
+                .setNegativeButton("No", null)
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         finishAffinity(); // 👈 Proper way to exit the app
                     }
                 })
-                .setNegativeButton("No", null)
                 .show();
     }
-
 }

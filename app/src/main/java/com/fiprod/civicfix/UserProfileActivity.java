@@ -222,13 +222,13 @@ public class UserProfileActivity extends AppCompatActivity {
                             Integer pendingIssues = snapshot.child("pending_issues").getValue(Integer.class);
                             Integer issueInProgress = snapshot.child("issue_in_progress").getValue(Integer.class);
                             Integer issueResolved = snapshot.child("issue_resolved").getValue(Integer.class);
-                            Integer issueReported = snapshot.child("issue_reported").getValue(Integer.class);
+                            Integer issueTaken = snapshot.child("total_issue_taken").getValue(Integer.class);
 
                             // Update UI with stats based on the role
                             if ("Citizen".equalsIgnoreCase(role)) {
                                 updateCitizenStats(issueSubmitted, resolvedByGov, pendingIssues);
                             } else {
-                                updateGovernmentStats(issueResolved, issueInProgress, issueReported);
+                                updateGovernmentStats(issueResolved, issueInProgress, issueTaken);
                             }
                         } else {
                             Log.d(TAG, "No user stats found, showing default values");
@@ -264,15 +264,15 @@ public class UserProfileActivity extends AppCompatActivity {
         cardText3.setText("Currently " + (pendingIssues != null ? pendingIssues : 0) + " issues are under review or pending response.");
     }
 
-    private void updateGovernmentStats(Integer issueResolved, Integer issueInProgress, Integer issueReported) {
+    private void updateGovernmentStats(Integer issueResolved, Integer issueInProgress, Integer issueTaken) {
         cardTitle1.setText("Issues Resolved");
         cardText1.setText("Total: " + (issueResolved != null ? issueResolved : 0) + " issues resolved by government.");
 
         cardTitle2.setText("Issues In Progress");
         cardText2.setText("Currently " + (issueInProgress != null ? issueInProgress : 0) + " issues are in progress.");
 
-        cardTitle3.setText("Issues Reported");
-        cardText3.setText("Total: " + (issueReported != null ? issueReported : 0) + " issues reported by citizens.");
+        cardTitle3.setText("Total Issue Taken");
+        cardText3.setText("Total Issue Taken To Resolve: " + (issueTaken != null ? issueTaken : 0));
     }
 
     private void showDefaultStats(String role) {

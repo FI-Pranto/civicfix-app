@@ -27,7 +27,11 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import org.json.JSONObject;
@@ -53,6 +57,7 @@ public class AddIssueActivity extends AppCompatActivity {
     private FirebaseUser currentUser;
     private TextView tvUploadText;
     LinearLayout layoutUpload;
+
 
     private static final int IMAGE_PICK_CODE = 1000;
     private static final int PERMISSION_CODE = 2000;
@@ -101,9 +106,17 @@ public class AddIssueActivity extends AppCompatActivity {
 
     private void setupSpinner() {
         List<String> categories = Arrays.asList("Broken Road", "Garbage", "Water Problem", "Street Light", "Other");
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, categories);
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                R.layout.spinner_selected_item,
+                categories
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
         spinnerCategory.setAdapter(adapter);
     }
+
 
     private void setupImageUpload() {
         ivUpload.setOnClickListener(v -> {
@@ -158,7 +171,6 @@ public class AddIssueActivity extends AppCompatActivity {
             imageUri = data.getData();
             Toast.makeText(this, "Image selected", Toast.LENGTH_SHORT).show();
 
-            // ✅ Show selected image name in TextView
             String imageName = getFileNameFromUri(imageUri);
             tvUploadText.setText(imageName);
         }
@@ -235,43 +247,62 @@ public class AddIssueActivity extends AppCompatActivity {
                 String imageUrl = jsonResponse.getString("secure_url");
 
                 runOnUiThread(() -> {
-                    String issueId = UUID.randomUUID().toString();
-                    Map<String, Object> issueData = new HashMap<>();
-                    issueData.put("title", title);
-                    issueData.put("description", desc);
-                    issueData.put("category", category);
-                    issueData.put("area", area);
-                    issueData.put("district", district);
-                    issueData.put("status", "PENDING");
-                    issueData.put("imageUrl", imageUrl);
-                    issueData.put("timestamp", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).format(new Date()));
+                    FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                    if (currentUser == null) return;
 
-                    Map<String, Object> submittedBy = new HashMap<>();
-                    submittedBy.put("userId", currentUser.getUid());
-                    submittedBy.put("name", currentUser.getDisplayName());
-                    issueData.put("submittedBy", submittedBy);
+                    FirebaseFirestore db = FirebaseFirestore.getInstance();
+                    String uid = currentUser.getUid();
 
-                    issueData.put("upvotes", 0);
+                    db.collection("users").document(uid).get().addOnSuccessListener(document -> {
+                        String fullName = "Unknown";
+                        if (document.exists()) {
+                            String firstName = document.getString("firstName");
+                            String lastName = document.getString("lastName");
+                            fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
+                            if (fullName.isEmpty()) fullName = "Unknown";
+                        }
 
-                    Map<String, Object> upvotedBy = new HashMap<>();
-                    issueData.put("upvotedBy", upvotedBy);
+                        String issueId = UUID.randomUUID().toString();
+                        Map<String, Object> issueData = new HashMap<>();
+                        issueData.put("title", title);
+                        issueData.put("description", desc);
+                        issueData.put("category", category);
+                        issueData.put("area", area);
+                        issueData.put("district", district);
+                        issueData.put("status", "PENDING");
+                        issueData.put("imageUrl", imageUrl);
+                        issueData.put("timestamp", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).format(new Date()));
 
-                    issueData.put("isReported", false);
+                        Map<String, Object> submittedBy = new HashMap<>();
+                        submittedBy.put("userId", uid);
+                        submittedBy.put("name", fullName);
+                        issueData.put("submittedBy", submittedBy);
 
-                    FirebaseDatabase.getInstance()
-                            .getReference("issues")
-                            .child(issueId)
-                            .setValue(issueData)
-                            .addOnSuccessListener(aVoid -> {
-                                dialog.dismiss();
-                                Toast.makeText(this, "Issue submitted!", Toast.LENGTH_SHORT).show();
-                                finish();
-                            })
-                            .addOnFailureListener(e -> {
-                                dialog.dismiss();
-                                Toast.makeText(this, "Database error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                            });
+                        issueData.put("upvotes", 0);
+                        issueData.put("upvotedBy", new HashMap<>());
+                        issueData.put("isReported", false);
+
+                        FirebaseDatabase.getInstance()
+                                .getReference("issues")
+                                .child(issueId)
+                                .setValue(issueData)
+                                .addOnSuccessListener(aVoid -> {
+                                    dialog.dismiss();
+                                    Toast.makeText(this, "Issue submitted!", Toast.LENGTH_SHORT).show();
+                                    updateProfileStatus();
+                                    finish();
+                                })
+                                .addOnFailureListener(e -> {
+                                    dialog.dismiss();
+                                    Toast.makeText(this, "Database error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
+
+                    }).addOnFailureListener(e -> {
+                        dialog.dismiss();
+                        Toast.makeText(this, "Failed to fetch user info", Toast.LENGTH_SHORT).show();
+                    });
                 });
+
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -283,7 +314,6 @@ public class AddIssueActivity extends AppCompatActivity {
         }).start();
     }
 
-    // ✅ Helper method to get filename from URI
     @SuppressLint("Range")
     private String getFileNameFromUri(Uri uri) {
         String result = null;
@@ -303,4 +333,36 @@ public class AddIssueActivity extends AppCompatActivity {
         }
         return result;
     }
+    void updateProfileStatus() {
+        DatabaseReference db = FirebaseDatabase.getInstance().getReference();
+        String citizenUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+        DatabaseReference citizenRef = db.child("profile").child("citizen").child(citizenUserId);
+
+        citizenRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    long submitted = snapshot.child("issue_submitted").getValue(Long.class) != null ?
+                            snapshot.child("issue_submitted").getValue(Long.class) : 0;
+
+                    long resolved = snapshot.child("resolved_by_gov").getValue(Long.class) != null ?
+                            snapshot.child("resolved_by_gov").getValue(Long.class) : 0;
+
+                    long newSubmitted = submitted + 1;
+                    long newPending = newSubmitted - resolved;
+
+
+                    citizenRef.child("issue_submitted").setValue(newSubmitted);
+                    citizenRef.child("pending_issues").setValue(newPending);
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(getApplicationContext(), "Error fetching profile data", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+
 }

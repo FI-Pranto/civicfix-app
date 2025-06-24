@@ -110,8 +110,10 @@ public class SearchUserActivity extends AppCompatActivity {
         ArrayAdapter<CharSequence> spinnerAdapter = ArrayAdapter.createFromResource(
                 this,
                 R.array.user_roles,
-                android.R.layout.simple_spinner_dropdown_item
+                R.layout.spinner_selected_item
         );
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
         filterSpinner.setAdapter(spinnerAdapter);
 
         filterSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -122,7 +124,7 @@ public class SearchUserActivity extends AppCompatActivity {
 
             @Override
             public void onNothingSelected(AdapterView<?> parentView) {
-                // No action needed
+                // pass
             }
         });
     }
