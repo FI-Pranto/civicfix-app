@@ -1,5 +1,7 @@
 package com.fiprod.civicfix;
 
+import android.annotation.SuppressLint;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
@@ -14,6 +16,7 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -41,7 +44,7 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+       // EdgeToEdge.enable(this);
         setContentView(R.layout.activity_home);
 
         // Initialize views
@@ -64,6 +67,7 @@ public class HomeActivity extends AppCompatActivity {
         loadIssuesFromFirebase();
 
         // Setup bottom navigation (YOUR original logic)
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setSelectedItemId(R.id.nav_home);
 
         bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -76,18 +80,21 @@ public class HomeActivity extends AppCompatActivity {
 
                 } else if (itemId == R.id.nav_search) {
                     // Uncomment when you create SearchActivity
-                    // startActivity(new Intent(getApplicationContext(), SearchActivity.class));
-                    // overridePendingTransition(0, 0);
+                     startActivity(new Intent(getApplicationContext(), SearchUserActivity.class));
+                     overridePendingTransition(0, 0);
+                     finish();
                     return true;
 
                 } else if (itemId == R.id.nav_issues) {
                     startActivity(new Intent(getApplicationContext(), MyIssueActivity.class));
                     overridePendingTransition(0, 0);
+                    finish();
                     return true;
 
                 } else if (itemId == R.id.nav_profile) {
                     startActivity(new Intent(getApplicationContext(), MainActivity.class));
                     overridePendingTransition(0, 0);
+                    finish();
                     return true;
                 }
 
@@ -158,4 +165,20 @@ public class HomeActivity extends AppCompatActivity {
         issueAdapter = new IssueAdapter(this, filteredList);
         recyclerIssues.setAdapter(issueAdapter);
     }
+
+    @SuppressLint("MissingSuperCall")
+    @Override
+    public void onBackPressed() {
+        new AlertDialog.Builder(this)
+                .setTitle("Exit App")
+                .setMessage("Do you want to exit the app?")
+                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        finishAffinity(); // 👈 Proper way to exit the app
+                    }
+                })
+                .setNegativeButton("No", null)
+                .show();
+    }
+
 }
