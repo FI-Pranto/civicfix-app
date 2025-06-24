@@ -32,6 +32,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
 
     TextView tvTitle, tvDescription, tvCategory, tvArea, tvStatus, tvUpvotes, tvReportedBy, tvHandledBy, tvAlreadyReported;
     ImageView ivIssueImage;
+
+    ImageView backHome;
     Spinner spinnerStatus;
     MaterialButton btnReport;
 
@@ -42,7 +44,7 @@ public class IssueDetailsActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+        //EdgeToEdge.enable(this);
         setContentView(R.layout.activity_issue_details);
 
         tvTitle = findViewById(R.id.tvTitle);
@@ -57,6 +59,8 @@ public class IssueDetailsActivity extends AppCompatActivity {
         spinnerStatus = findViewById(R.id.spinnerStatus);
         btnReport = findViewById(R.id.btnReport);
         tvAlreadyReported = findViewById(R.id.tvAlreadyReported);
+
+        backHome = findViewById(R.id.back_home);
 
         issueId = getIntent().getStringExtra("id");
         String title = getIntent().getStringExtra("title");
@@ -164,6 +168,15 @@ public class IssueDetailsActivity extends AppCompatActivity {
                         }
                     }
                 });
+
+
+        backHome.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish(); // Just go back without showing dialog
+            }
+        });
+
     }
 
     private void setupSpinnerForStatus(String currentStatus) {

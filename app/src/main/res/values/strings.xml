@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">CivicFix</string>
     <string name="reported_issues">Reported Issues</string>
+    <string-array name="user_roles">
+        <item>All</item>
+        <item>Government Employee</item>
+        <item>Citizen</item>
+    </string-array>
+
+
 </resources>

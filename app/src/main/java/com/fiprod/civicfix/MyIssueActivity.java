@@ -1,5 +1,7 @@
 package com.fiprod.civicfix;
 
+import android.annotation.SuppressLint;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -8,6 +10,7 @@ import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -35,7 +38,7 @@ public class MyIssueActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+       // EdgeToEdge.enable(this);
         setContentView(R.layout.activity_my_issue);
 
         // Setup RecyclerView
@@ -59,10 +62,13 @@ public class MyIssueActivity extends AppCompatActivity {
             if (itemId == R.id.nav_home) {
                 startActivity(new Intent(getApplicationContext(), HomeActivity.class));
                 overridePendingTransition(0, 0);
+                finish();
                 return true;
 
             } else if (itemId == R.id.nav_search) {
-                // startActivity(new Intent(getApplicationContext(), SearchActivity.class));
+                 startActivity(new Intent(getApplicationContext(), SearchUserActivity.class));
+                overridePendingTransition(0, 0);
+                 finish();
                 return true;
 
             } else if (itemId == R.id.nav_issues) {
@@ -71,6 +77,7 @@ public class MyIssueActivity extends AppCompatActivity {
             } else if (itemId == R.id.nav_profile) {
                 startActivity(new Intent(getApplicationContext(), MainActivity.class));
                 overridePendingTransition(0, 0);
+                finish();
                 return true;
             }
 
@@ -112,4 +119,19 @@ public class MyIssueActivity extends AppCompatActivity {
             }
         });
     }
+    @SuppressLint("MissingSuperCall")
+    @Override
+    public void onBackPressed() {
+        new AlertDialog.Builder(this)
+                .setTitle("Exit App")
+                .setMessage("Do you want to exit the app?")
+                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        finishAffinity(); // 👈 Proper way to exit the app
+                    }
+                })
+                .setNegativeButton("No", null)
+                .show();
+    }
+
 }
