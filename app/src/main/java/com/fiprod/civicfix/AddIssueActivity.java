@@ -9,7 +9,9 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.OpenableColumns;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -30,6 +32,12 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.*;
 
 import org.json.JSONObject;
+import org.osmdroid.api.IMapController;
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
@@ -43,15 +51,25 @@ import java.util.*;
 
 public class AddIssueActivity extends AppCompatActivity {
 
-    private TextInputEditText etTitle, etDescription, etManualArea;
+    private TextInputEditText etTitle, etDescription;
+    private TextView tvSelectArea;
     private Spinner spinnerCategory;
     private ImageView ivUpload;
     private Uri imageUri;
     private String district = "";
+    private String selectedLocation = ""; // Will store "latitude,longitude"
     private MaterialButton btnSubmit;
     private FirebaseUser currentUser;
     private TextView tvUploadText;
-    LinearLayout layoutUpload;
+    private LinearLayout layoutUpload;
+
+    // Map related views
+    private LinearLayout mapContainer;
+    private MapView mapView;
+    private MaterialButton btnConfirmLocation, btnCancelMap;
+    private Marker selectedLocationMarker;
+    private GeoPoint selectedPoint;
+    private boolean isMapVisible = false;
 
     private static final int IMAGE_PICK_CODE = 1000;
     private static final int PERMISSION_CODE = 2000;
@@ -59,6 +77,10 @@ public class AddIssueActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Initialize OSMDroid configuration
+        Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
+
         setContentView(R.layout.activity_add_issue);
 
         initViews();
@@ -67,20 +89,35 @@ public class AddIssueActivity extends AppCompatActivity {
         fetchUserDistrict();
         setupSpinner();
         setupImageUpload();
+        setupLocationPicker();
+        setupMap();
         setupSubmitAction();
+
         ImageView backToNav = findViewById(R.id.backToNav);
-        backToNav.setOnClickListener(v -> onBackPressed());
+        backToNav.setOnClickListener(v -> {
+            if (isMapVisible) {
+                hideMap();
+            } else {
+                onBackPressed();
+            }
+        });
     }
 
     private void initViews() {
         etTitle = findViewById(R.id.etTitle);
         etDescription = findViewById(R.id.etDescription);
-        etManualArea = findViewById(R.id.etManualArea);
+        tvSelectArea = findViewById(R.id.tvSelectArea);
         spinnerCategory = findViewById(R.id.spinnerCategory);
         layoutUpload = findViewById(R.id.layoutUploadPhoto);
         tvUploadText = layoutUpload.findViewById(R.id.uploadTextView);
         ivUpload = layoutUpload.findViewById(R.id.uploadImageView);
         btnSubmit = findViewById(R.id.btnSubmitReport);
+
+        // Map related views
+        mapContainer = findViewById(R.id.mapContainer);
+        mapView = findViewById(R.id.mapView);
+        btnConfirmLocation = findViewById(R.id.btnConfirmLocation);
+        btnCancelMap = findViewById(R.id.btnCancelMap);
     }
 
     private void fetchUserDistrict() {
@@ -120,6 +157,84 @@ public class AddIssueActivity extends AppCompatActivity {
         });
     }
 
+    private void setupLocationPicker() {
+        tvSelectArea.setOnClickListener(v -> showMap());
+    }
+
+    private void setupMap() {
+        mapView.setTileSource(TileSourceFactory.MAPNIK);
+        mapView.setMultiTouchControls(true);
+
+        IMapController mapController = mapView.getController();
+        mapController.setZoom(15.0);
+
+        // Default location (Dhaka, Bangladesh)
+        GeoPoint startPoint = new GeoPoint(23.8103, 90.4125);
+        mapController.setCenter(startPoint);
+
+        // Add map click listener
+        mapView.getOverlays().add(new org.osmdroid.views.overlay.Overlay() {
+            @Override
+            public boolean onSingleTapConfirmed(android.view.MotionEvent e, MapView mapView) {
+                GeoPoint geoPoint = (GeoPoint) mapView.getProjection().fromPixels((int) e.getX(), (int) e.getY());
+                addMarker(geoPoint);
+                return true;
+            }
+        });
+
+        // Setup map buttons
+        btnConfirmLocation.setOnClickListener(v -> {
+            if (selectedPoint != null) {
+                selectedLocation = selectedPoint.getLatitude() + "," + selectedPoint.getLongitude();
+                tvSelectArea.setText("📍 Location Selected: " + String.format("%.6f, %.6f",
+                        selectedPoint.getLatitude(), selectedPoint.getLongitude()));
+                tvSelectArea.setTextColor(getResources().getColor(android.R.color.holo_green_dark));
+                hideMap();
+                Toast.makeText(this, "Location confirmed!", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Please select a location on the map first", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        btnCancelMap.setOnClickListener(v -> hideMap());
+    }
+
+    private void showMap() {
+        mapContainer.setVisibility(View.VISIBLE);
+        isMapVisible = true;
+        if (mapView != null) {
+            mapView.onResume();
+        }
+    }
+
+    private void hideMap() {
+        mapContainer.setVisibility(View.GONE);
+        isMapVisible = false;
+        if (mapView != null) {
+            mapView.onPause();
+        }
+    }
+
+    private void addMarker(GeoPoint point) {
+        // Remove existing marker if any
+        if (selectedLocationMarker != null) {
+            mapView.getOverlays().remove(selectedLocationMarker);
+        }
+
+        // Add new marker
+        selectedLocationMarker = new Marker(mapView);
+        selectedLocationMarker.setPosition(point);
+        selectedLocationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+        selectedLocationMarker.setTitle("Selected Location");
+
+        mapView.getOverlays().add(selectedLocationMarker);
+        mapView.invalidate();
+
+        selectedPoint = point;
+
+        Toast.makeText(this, "Location selected! Tap confirm to proceed.", Toast.LENGTH_SHORT).show();
+    }
+
     private boolean checkAndRequestPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
@@ -148,6 +263,7 @@ public class AddIssueActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == IMAGE_PICK_CODE && resultCode == RESULT_OK && data != null) {
             imageUri = data.getData();
             Toast.makeText(this, "Image selected", Toast.LENGTH_SHORT).show();
@@ -161,14 +277,13 @@ public class AddIssueActivity extends AppCompatActivity {
             String title = etTitle.getText().toString().trim();
             String desc = etDescription.getText().toString().trim();
             String category = spinnerCategory.getSelectedItem().toString();
-            String area = etManualArea.getText().toString().trim();
 
-            if (title.isEmpty() || desc.isEmpty() || area.isEmpty() || imageUri == null) {
-                Toast.makeText(this, "Fill all fields & select image", Toast.LENGTH_SHORT).show();
+            if (title.isEmpty() || desc.isEmpty() || selectedLocation.isEmpty() || imageUri == null) {
+                Toast.makeText(this, "Fill all fields, select location & image", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            uploadIssueToCloudinary(title, desc, category, area);
+            uploadIssueToCloudinary(title, desc, category, selectedLocation);
         });
     }
 
@@ -244,7 +359,7 @@ public class AddIssueActivity extends AppCompatActivity {
                             issueData.put("title", title);
                             issueData.put("description", desc);
                             issueData.put("category", category);
-                            issueData.put("area", area);
+                            issueData.put("area", area); // This will store "latitude,longitude"
                             issueData.put("district", district);
                             issueData.put("status", "PENDING");
                             issueData.put("imageUrl", imageUrl);
@@ -340,5 +455,30 @@ public class AddIssueActivity extends AppCompatActivity {
                 Toast.makeText(getApplicationContext(), "Error fetching profile data", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mapView != null && isMapVisible) {
+            mapView.onResume();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mapView != null) {
+            mapView.onPause();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isMapVisible) {
+            hideMap();
+        } else {
+            super.onBackPressed();
+        }
     }
 }
