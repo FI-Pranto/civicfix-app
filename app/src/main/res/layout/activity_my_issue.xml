@@ -43,9 +43,8 @@
         android:paddingHorizontal="16dp"
         android:paddingTop="24dp"
         android:paddingBottom="8dp"
-        android:background="#EFFFFF"> <!-- Light teal-like background -->
+        android:background="#EFFFFF">
 
-        <!-- Add New Issue Button -->
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/button_add_issue"
             android:layout_width="wrap_content"
@@ -56,7 +55,8 @@
             android:paddingHorizontal="20dp"
             android:paddingVertical="8dp"
             android:background="@drawable/rounded_button_bg"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:visibility="gone"/>
 
         <!-- RecyclerView -->
         <androidx.recyclerview.widget.RecyclerView

@@ -27,12 +27,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.database.*;
 
 import org.json.JSONObject;
 
@@ -58,14 +53,12 @@ public class AddIssueActivity extends AppCompatActivity {
     private TextView tvUploadText;
     LinearLayout layoutUpload;
 
-
     private static final int IMAGE_PICK_CODE = 1000;
     private static final int PERMISSION_CODE = 2000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-       // EdgeToEdge.enable(this);
         setContentView(R.layout.activity_add_issue);
 
         initViews();
@@ -92,31 +85,32 @@ public class AddIssueActivity extends AppCompatActivity {
 
     private void fetchUserDistrict() {
         if (currentUser == null) return;
+        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users").child(currentUser.getUid());
+        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    district = snapshot.child("district").getValue(String.class);
+                }
+            }
 
-        FirebaseFirestore.getInstance()
-                .collection("users")
-                .document(currentUser.getUid())
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        district = documentSnapshot.getString("district");
-                    }
-                });
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(AddIssueActivity.this, "Failed to fetch district", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void setupSpinner() {
         List<String> categories = Arrays.asList("Broken Road", "Garbage", "Water Problem", "Street Light", "Other");
-
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 this,
                 R.layout.spinner_selected_item,
                 categories
         );
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-
         spinnerCategory.setAdapter(adapter);
     }
-
 
     private void setupImageUpload() {
         ivUpload.setOnClickListener(v -> {
@@ -152,25 +146,11 @@ public class AddIssueActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == PERMISSION_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                openImagePicker();
-            } else {
-                Toast.makeText(this, "Permission denied! Cannot select image.", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == IMAGE_PICK_CODE && resultCode == RESULT_OK && data != null) {
             imageUri = data.getData();
             Toast.makeText(this, "Image selected", Toast.LENGTH_SHORT).show();
-
             String imageName = getFileNameFromUri(imageUri);
             tvUploadText.setText(imageName);
         }
@@ -222,7 +202,6 @@ public class AddIssueActivity extends AppCompatActivity {
                 conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
 
                 DataOutputStream output = new DataOutputStream(conn.getOutputStream());
-
                 output.writeBytes("--" + boundary + CRLF);
                 output.writeBytes("Content-Disposition: form-data; name=\"upload_preset\"" + CRLF + CRLF);
                 output.writeBytes(uploadPreset + CRLF);
@@ -247,62 +226,62 @@ public class AddIssueActivity extends AppCompatActivity {
                 String imageUrl = jsonResponse.getString("secure_url");
 
                 runOnUiThread(() -> {
-                    FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-                    if (currentUser == null) return;
-
-                    FirebaseFirestore db = FirebaseFirestore.getInstance();
                     String uid = currentUser.getUid();
+                    DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users").child(uid);
+                    userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            String fullName = "Unknown";
+                            if (snapshot.exists()) {
+                                String firstName = snapshot.child("firstName").getValue(String.class);
+                                String lastName = snapshot.child("lastName").getValue(String.class);
+                                fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
+                                if (fullName.isEmpty()) fullName = "Unknown";
+                            }
 
-                    db.collection("users").document(uid).get().addOnSuccessListener(document -> {
-                        String fullName = "Unknown";
-                        if (document.exists()) {
-                            String firstName = document.getString("firstName");
-                            String lastName = document.getString("lastName");
-                            fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
-                            if (fullName.isEmpty()) fullName = "Unknown";
+                            String issueId = UUID.randomUUID().toString();
+                            Map<String, Object> issueData = new HashMap<>();
+                            issueData.put("title", title);
+                            issueData.put("description", desc);
+                            issueData.put("category", category);
+                            issueData.put("area", area);
+                            issueData.put("district", district);
+                            issueData.put("status", "PENDING");
+                            issueData.put("imageUrl", imageUrl);
+                            issueData.put("timestamp", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).format(new Date()));
+
+                            Map<String, Object> submittedBy = new HashMap<>();
+                            submittedBy.put("userId", uid);
+                            submittedBy.put("name", fullName);
+                            issueData.put("submittedBy", submittedBy);
+
+                            issueData.put("upvotes", 0);
+                            issueData.put("upvotedBy", new HashMap<>());
+                            issueData.put("isReported", false);
+
+                            FirebaseDatabase.getInstance()
+                                    .getReference("issues")
+                                    .child(issueId)
+                                    .setValue(issueData)
+                                    .addOnSuccessListener(aVoid -> {
+                                        dialog.dismiss();
+                                        Toast.makeText(AddIssueActivity.this, "Issue submitted!", Toast.LENGTH_SHORT).show();
+                                        updateProfileStatus();
+                                        finish();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        dialog.dismiss();
+                                        Toast.makeText(AddIssueActivity.this, "Database error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    });
                         }
 
-                        String issueId = UUID.randomUUID().toString();
-                        Map<String, Object> issueData = new HashMap<>();
-                        issueData.put("title", title);
-                        issueData.put("description", desc);
-                        issueData.put("category", category);
-                        issueData.put("area", area);
-                        issueData.put("district", district);
-                        issueData.put("status", "PENDING");
-                        issueData.put("imageUrl", imageUrl);
-                        issueData.put("timestamp", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).format(new Date()));
-
-                        Map<String, Object> submittedBy = new HashMap<>();
-                        submittedBy.put("userId", uid);
-                        submittedBy.put("name", fullName);
-                        issueData.put("submittedBy", submittedBy);
-
-                        issueData.put("upvotes", 0);
-                        issueData.put("upvotedBy", new HashMap<>());
-                        issueData.put("isReported", false);
-
-                        FirebaseDatabase.getInstance()
-                                .getReference("issues")
-                                .child(issueId)
-                                .setValue(issueData)
-                                .addOnSuccessListener(aVoid -> {
-                                    dialog.dismiss();
-                                    Toast.makeText(this, "Issue submitted!", Toast.LENGTH_SHORT).show();
-                                    updateProfileStatus();
-                                    finish();
-                                })
-                                .addOnFailureListener(e -> {
-                                    dialog.dismiss();
-                                    Toast.makeText(this, "Database error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                });
-
-                    }).addOnFailureListener(e -> {
-                        dialog.dismiss();
-                        Toast.makeText(this, "Failed to fetch user info", Toast.LENGTH_SHORT).show();
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            dialog.dismiss();
+                            Toast.makeText(AddIssueActivity.this, "Failed to fetch user info", Toast.LENGTH_SHORT).show();
+                        }
                     });
                 });
-
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -333,6 +312,7 @@ public class AddIssueActivity extends AppCompatActivity {
         }
         return result;
     }
+
     void updateProfileStatus() {
         DatabaseReference db = FirebaseDatabase.getInstance().getReference();
         String citizenUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
@@ -344,13 +324,11 @@ public class AddIssueActivity extends AppCompatActivity {
                 if (snapshot.exists()) {
                     long submitted = snapshot.child("issue_submitted").getValue(Long.class) != null ?
                             snapshot.child("issue_submitted").getValue(Long.class) : 0;
-
                     long resolved = snapshot.child("resolved_by_gov").getValue(Long.class) != null ?
                             snapshot.child("resolved_by_gov").getValue(Long.class) : 0;
 
                     long newSubmitted = submitted + 1;
                     long newPending = newSubmitted - resolved;
-
 
                     citizenRef.child("issue_submitted").setValue(newSubmitted);
                     citizenRef.child("pending_issues").setValue(newPending);
@@ -363,6 +341,4 @@ public class AddIssueActivity extends AppCompatActivity {
             }
         });
     }
-
-
 }

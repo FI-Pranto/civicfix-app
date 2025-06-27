@@ -10,19 +10,12 @@ import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.PasswordTransformationMethod;
 import android.util.Patterns;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.TextView;
-import android.widget.Toast;
-
+import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
-
-import java.util.List;
+import com.google.firebase.database.*;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -34,10 +27,14 @@ public class LoginActivity extends AppCompatActivity {
 
     boolean isPasswordVisible = false;
 
+    DatabaseReference dbRef;
+
     @Override
     protected void onStart() {
         super.onStart();
         mAuth = FirebaseAuth.getInstance();
+        dbRef = FirebaseDatabase.getInstance().getReference();
+
         if (mAuth.getCurrentUser() != null) {
             startActivity(new Intent(this, MainActivity.class));
             finish();
@@ -48,11 +45,9 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-
         if (getSupportActionBar() != null) {
             getSupportActionBar().hide();
         }
-
 
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_FULLSCREEN |
@@ -63,19 +58,17 @@ public class LoginActivity extends AppCompatActivity {
                         View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         );
 
-
-
-
         setContentView(R.layout.activity_login);
-
 
         emailET = findViewById(R.id.email_input);
         passwordET = findViewById(R.id.password_input);
         loginBtn = findViewById(R.id.login_button);
         forgotPassBtn = findViewById(R.id.forgot_password);
         registerBtn = findViewById(R.id.signup_now);
-
         togglePasswordVisibility = findViewById(R.id.togglePasswordVisibility);
+
+        dbRef = FirebaseDatabase.getInstance().getReference();
+        mAuth = FirebaseAuth.getInstance();
 
         loginBtn.setOnClickListener(v -> loginUser());
 
@@ -97,13 +90,10 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
-            FirebaseAuth mAuth = FirebaseAuth.getInstance();
-
-
             mAuth.sendPasswordResetEmail(email)
-                    .addOnSuccessListener(aVoid -> {
-                        Toast.makeText(this, "If this email is registered, you will receive a password reset email.", Toast.LENGTH_LONG).show();
-                    })
+                    .addOnSuccessListener(aVoid ->
+                            Toast.makeText(this, "If this email is registered, you will receive a password reset email.", Toast.LENGTH_LONG).show()
+                    )
                     .addOnFailureListener(e -> {
                         String errorMessage = e.getMessage();
                         if (errorMessage != null && errorMessage.contains("no user record")) {
@@ -114,8 +104,6 @@ public class LoginActivity extends AppCompatActivity {
                     });
         });
 
-
-
         registerBtn.setOnClickListener(v -> {
             startActivity(new Intent(this, RegisterActivity.class));
             finish();
@@ -125,14 +113,13 @@ public class LoginActivity extends AppCompatActivity {
             isPasswordVisible = !isPasswordVisible;
             if (isPasswordVisible) {
                 passwordET.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-                togglePasswordVisibility.setImageResource(R.drawable.ic_eye); // change to open eye icon
+                togglePasswordVisibility.setImageResource(R.drawable.ic_eye);
             } else {
                 passwordET.setTransformationMethod(PasswordTransformationMethod.getInstance());
-                togglePasswordVisibility.setImageResource(R.drawable.ic_eye_off); // change back to eye-off icon
+                togglePasswordVisibility.setImageResource(R.drawable.ic_eye_off);
             }
             passwordET.setSelection(passwordET.getText().length());
         });
-
     }
 
     private void loginUser() {
@@ -154,17 +141,17 @@ public class LoginActivity extends AppCompatActivity {
 
                 if (user != null && user.isEmailVerified()) {
                     String uid = user.getUid();
-                    FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-                    db.collection("users").document(uid).get().addOnSuccessListener(document -> {
-                        if (document.exists()) {
-                            String role = document.getString("role");
+                    dbRef.child("users").child(uid).get().addOnSuccessListener(snapshot -> {
+                        if (snapshot.exists()) {
+                            String role = snapshot.child("role").getValue(String.class);
 
                             if ("Government Employee".equalsIgnoreCase(role)) {
-                                Boolean verifiedDoc = document.getBoolean("verifiedDoc");
-                                Toast.makeText(this, "hi"+verifiedDoc, Toast.LENGTH_LONG).show();
+                                Boolean verifiedDoc = snapshot.child("verifiedDoc").getValue(Boolean.class);
+                                Toast.makeText(this, "hi" + verifiedDoc, Toast.LENGTH_LONG).show();
+
                                 if (verifiedDoc != null && verifiedDoc) {
-                                    updateUserVerifiedInFirestore();
+                                    updateUserVerifiedInRealtimeDB(uid);
                                     startActivity(new Intent(this, MainActivity.class));
                                     finish();
                                 } else {
@@ -172,12 +159,12 @@ public class LoginActivity extends AppCompatActivity {
                                     mAuth.signOut();
                                 }
                             } else {
-                                updateUserVerifiedInFirestore();
+                                updateUserVerifiedInRealtimeDB(uid);
                                 startActivity(new Intent(this, MainActivity.class));
                                 finish();
                             }
                         } else {
-                            Toast.makeText(this, "User profile not found in Firestore.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "User profile not found.", Toast.LENGTH_SHORT).show();
                             mAuth.signOut();
                         }
                     }).addOnFailureListener(e -> {
@@ -195,32 +182,27 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private void updateUserVerifiedInFirestore() {
+    private void updateUserVerifiedInRealtimeDB(String uid) {
         if (!isConnected(this)) {
             Toast.makeText(this, "No internet connection. Please enable internet.", Toast.LENGTH_LONG).show();
             return;
         }
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        db.collection("users").document(uid)
-                .update("verified", true)
+        dbRef.child("users").child(uid).child("verified").setValue(true)
                 .addOnSuccessListener(aVoid -> {
+                    // Updated successfully
                 })
                 .addOnFailureListener(e -> {
                     Toast.makeText(this, "Failed to update verification status.", Toast.LENGTH_SHORT).show();
                 });
     }
 
-
-    //  Internet checker
     private boolean isConnected(Context context) {
         ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo netInfo = cm.getActiveNetworkInfo();
         return netInfo != null && netInfo.isConnected();
     }
 
-    //email and password checker
     private boolean isValidInput(String email, String password) {
         if (email.isEmpty()) {
             Toast.makeText(this, "Email is required", Toast.LENGTH_SHORT).show();

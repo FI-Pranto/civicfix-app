@@ -8,7 +8,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,13 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.database.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,37 +30,27 @@ public class MyIssueActivity extends AppCompatActivity {
     private DatabaseReference dbRef;
     private Button addIssueButton;
 
-    // Role management
-    private FirebaseFirestore firestore;
     private String userRole = "";
     private String currentUserId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // EdgeToEdge.enable(this);
         setContentView(R.layout.activity_my_issue);
 
-        // Initialize Firebase
-        firestore = FirebaseFirestore.getInstance();
         currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-        // Setup RecyclerView
         recyclerMyIssues = findViewById(R.id.recycler_my_issues);
         recyclerMyIssues.setLayoutManager(new LinearLayoutManager(this));
         issueAdapter = new IssueAdapter(this, userIssues);
         recyclerMyIssues.setAdapter(issueAdapter);
 
-        // Setup Firebase reference
         dbRef = FirebaseDatabase.getInstance().getReference("issues");
 
-        // Initialize Add Issue Button
         addIssueButton = findViewById(R.id.button_add_issue);
 
-        // Get user role and setup UI accordingly
         getUserRoleAndSetupUI();
 
-        // Bottom navigation
         bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setSelectedItemId(R.id.nav_issues);
 
@@ -100,61 +83,51 @@ public class MyIssueActivity extends AppCompatActivity {
         });
     }
 
-
     private void getUserRoleAndSetupUI() {
-        firestore.collection("users").document(currentUserId)
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        DocumentSnapshot document = task.getResult();
-                        if (document.exists()) {
-                            userRole = document.getString("role");
-                            if (userRole == null) {
-                                userRole = "Citizen"; // Default role
-                            }
+        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("users").child(currentUserId).child("role");
 
-                            setupUIBasedOnRole();
-                            loadIssuesBasedOnRole();
-                        } else {
-                            Toast.makeText(this, "User profile not found", Toast.LENGTH_SHORT).show();
-                            userRole = "Citizen"; // Default
-                            setupUIBasedOnRole();
-                            loadIssuesBasedOnRole();
-                        }
-                    } else {
-                        Toast.makeText(this, "Failed to get user role", Toast.LENGTH_SHORT).show();
-                        userRole = "Citizen"; // Default
-                        setupUIBasedOnRole();
-                        loadIssuesBasedOnRole();
-                    }
-                });
+        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                userRole = snapshot.getValue(String.class);
+                if (userRole == null) {
+                    userRole = "Citizen"; // default fallback
+                }
+
+                setupUIBasedOnRole();
+                loadIssuesBasedOnRole();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(MyIssueActivity.this, "Failed to get user role", Toast.LENGTH_SHORT).show();
+                userRole = "Citizen"; // fallback
+                setupUIBasedOnRole();
+                loadIssuesBasedOnRole();
+            }
+        });
     }
 
-    // Setup UI based on user role
     private void setupUIBasedOnRole() {
         if ("Citizen".equalsIgnoreCase(userRole)) {
-            // Show Add Issue button for citizens
             addIssueButton.setVisibility(View.VISIBLE);
             addIssueButton.setOnClickListener(v -> {
                 Intent intent = new Intent(MyIssueActivity.this, AddIssueActivity.class);
                 startActivity(intent);
             });
         } else if ("Government Employee".equalsIgnoreCase(userRole)) {
-            // Hide Add Issue button for government employees
             addIssueButton.setVisibility(View.GONE);
         }
     }
 
-    // Load issues based on user role
     private void loadIssuesBasedOnRole() {
         if ("Citizen".equalsIgnoreCase(userRole)) {
-            loadMyReportedIssues(); // Issues reported by citizen
+            loadMyReportedIssues();
         } else if ("Government Employee".equalsIgnoreCase(userRole)) {
-            loadMyHandledIssues(); // Issues handled by government employee
+            loadMyHandledIssues();
         }
     }
 
-    // Load issues reported by the current user (for citizens)
     private void loadMyReportedIssues() {
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -165,7 +138,6 @@ public class MyIssueActivity extends AppCompatActivity {
                     if (issue != null) {
                         issue.id = snap.getKey();
 
-                        // Check if issue is reported by current user
                         DataSnapshot submittedBySnap = snap.child("submittedBy");
                         if (submittedBySnap.exists() &&
                                 currentUserId.equals(submittedBySnap.child("userId").getValue(String.class))) {
@@ -187,7 +159,6 @@ public class MyIssueActivity extends AppCompatActivity {
         });
     }
 
-    // Load issues handled by the current user (for government employees)
     private void loadMyHandledIssues() {
         dbRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -198,7 +169,6 @@ public class MyIssueActivity extends AppCompatActivity {
                     if (issue != null) {
                         issue.id = snap.getKey();
 
-                        // Check if issue is handled by current user
                         String handledBy = snap.child("handledBy").getValue(String.class);
                         if (currentUserId.equals(handledBy)) {
                             userIssues.add(issue);
@@ -219,7 +189,6 @@ public class MyIssueActivity extends AppCompatActivity {
         });
     }
 
-    // Update RecyclerView with new data
     private void updateRecyclerView() {
         issueAdapter = new IssueAdapter(MyIssueActivity.this, userIssues);
         recyclerMyIssues.setAdapter(issueAdapter);
@@ -233,7 +202,7 @@ public class MyIssueActivity extends AppCompatActivity {
                 .setMessage("Do you want to exit the app?")
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
-                        finishAffinity(); // 👈 Proper way to exit the app
+                        finishAffinity();
                     }
                 })
                 .setNegativeButton("No", null)

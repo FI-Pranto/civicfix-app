@@ -13,7 +13,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -21,7 +20,7 @@ import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.database.*;
 
 import org.json.JSONObject;
 
@@ -29,18 +28,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.UUID;
 
 public class EditProfileActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
-    private FirebaseFirestore db;
+    private DatabaseReference dbRef;
     private ImageView ivProfileImage;
     private EditText etFirstName, etLastName;
     private MaterialButton btnSave;
     private TextView tvChangePhoto;
     private Uri imageUri = null;
-    private String profileImageUrl = ""; // Default empty URL
+    private String profileImageUrl = "";
 
     private static final int PERMISSION_CODE = 2000;
     private static final int IMAGE_PICK_CODE = 1000;
@@ -51,7 +51,7 @@ public class EditProfileActivity extends AppCompatActivity {
         setContentView(R.layout.activity_edit_profile);
 
         mAuth = FirebaseAuth.getInstance();
-        db = FirebaseFirestore.getInstance();
+        dbRef = FirebaseDatabase.getInstance().getReference();
 
         ivProfileImage = findViewById(R.id.edit_profile_image);
         etFirstName = findViewById(R.id.edit_first_name);
@@ -59,40 +59,43 @@ public class EditProfileActivity extends AppCompatActivity {
         tvChangePhoto = findViewById(R.id.change_photo_text);
         btnSave = findViewById(R.id.btn_save_profile);
 
-        // Load user data from Firebase
         loadUserProfile();
 
-        // Set up Change Photo click action
         tvChangePhoto.setOnClickListener(v -> {
             if (checkAndRequestPermission()) {
                 openImagePicker();
             }
         });
 
-        // Save updated profile information
         btnSave.setOnClickListener(v -> saveProfileChanges());
     }
 
     private void loadUserProfile() {
         String userId = mAuth.getCurrentUser().getUid();
-        db.collection("users").document(userId).get().addOnSuccessListener(documentSnapshot -> {
-            if (documentSnapshot.exists()) {
-                String firstName = documentSnapshot.getString("firstName");
-                String lastName = documentSnapshot.getString("lastName");
-                profileImageUrl = documentSnapshot.getString("profileImageUrl"); // Get image URL
+        dbRef.child("users").child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    String firstName = snapshot.child("firstName").getValue(String.class);
+                    String lastName = snapshot.child("lastName").getValue(String.class);
+                    profileImageUrl = snapshot.child("profileImageUrl").getValue(String.class);
 
-                // Set values to UI
-                etFirstName.setText(firstName);
-                etLastName.setText(lastName);
+                    etFirstName.setText(firstName);
+                    etLastName.setText(lastName);
 
-                // Load image using Glide
-                if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
-                    Glide.with(this)
-                            .load(profileImageUrl)
-                            .into(ivProfileImage); // Load the image into the ImageView
-                } else {
-                    ivProfileImage.setImageResource(R.drawable.circle_bg); // Default image if no profile image
+                    if (profileImageUrl != null && !profileImageUrl.isEmpty()) {
+                        Glide.with(EditProfileActivity.this)
+                                .load(profileImageUrl)
+                                .into(ivProfileImage);
+                    } else {
+                        ivProfileImage.setImageResource(R.drawable.circle_bg);
+                    }
                 }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                Toast.makeText(EditProfileActivity.this, "Failed to load profile", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -110,19 +113,18 @@ public class EditProfileActivity extends AppCompatActivity {
         dialog.setMessage("Updating Profile...");
         dialog.show();
 
-        // Update Firestore
         String userId = mAuth.getCurrentUser().getUid();
+
         if (imageUri != null) {
             uploadProfileImageToCloudinary(imageUri, dialog, userId, newFirstName, newLastName);
         } else {
-            updateProfile(userId, newFirstName, newLastName, profileImageUrl, dialog); // No image update
+            updateProfile(userId, newFirstName, newLastName, profileImageUrl, dialog);
         }
     }
 
     private void uploadProfileImageToCloudinary(Uri imageUri, ProgressDialog dialog, String userId, String newFirstName, String newLastName) {
         new Thread(() -> {
             try {
-                // Upload image to Cloudinary (like how it was done before)
                 String cloudName = "ddnttmsxs";
                 String uploadPreset = "CivicFix";
 
@@ -153,7 +155,6 @@ public class EditProfileActivity extends AppCompatActivity {
                 output.flush();
                 output.close();
 
-                // Get image URL from Cloudinary response
                 InputStream responseStream = conn.getInputStream();
                 StringBuilder response = new StringBuilder();
                 int i;
@@ -164,7 +165,7 @@ public class EditProfileActivity extends AppCompatActivity {
 
                 runOnUiThread(() -> {
                     profileImageUrl = imageUrl;
-                    updateProfile(userId, newFirstName, newLastName, profileImageUrl, dialog); // Update Firestore with new image URL
+                    updateProfile(userId, newFirstName, newLastName, profileImageUrl, dialog);
                 });
             } catch (Exception e) {
                 e.printStackTrace();
@@ -177,9 +178,12 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void updateProfile(String userId, String firstName, String lastName, String imageUrl, ProgressDialog dialog) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("users").document(userId)
-                .update("firstName", firstName, "lastName", lastName, "profileImageUrl", imageUrl)
+        HashMap<String, Object> updates = new HashMap<>();
+        updates.put("firstName", firstName);
+        updates.put("lastName", lastName);
+        updates.put("profileImageUrl", imageUrl);
+
+        dbRef.child("users").child(userId).updateChildren(updates)
                 .addOnSuccessListener(aVoid -> {
                     dialog.dismiss();
                     Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show();
@@ -223,7 +227,7 @@ public class EditProfileActivity extends AppCompatActivity {
             imageUri = data.getData();
             Glide.with(this)
                     .load(imageUri)
-                    .into(ivProfileImage); // Show selected image with Glide
+                    .into(ivProfileImage);
         }
     }
 }

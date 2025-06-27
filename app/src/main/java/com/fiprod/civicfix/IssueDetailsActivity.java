@@ -21,13 +21,13 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.DocumentSnapshot;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 
 public class IssueDetailsActivity extends AppCompatActivity {
 
@@ -93,7 +93,6 @@ public class IssueDetailsActivity extends AppCompatActivity {
             }
         }
 
-
         tvTitle.setText(title);
         tvDescription.setText(description);
         tvCategory.setText(category);
@@ -138,26 +137,28 @@ public class IssueDetailsActivity extends AppCompatActivity {
         });
 
         if (handledBy != null && !handledBy.isEmpty()) {
-            FirebaseFirestore.getInstance().collection("users")
-                    .document(handledBy)
-                    .get()
-                    .addOnSuccessListener(doc -> {
-                        if (doc.exists()) {
-                            String firstName = doc.getString("firstName");
-                            String lastName = doc.getString("lastName");
-                            String fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
-                            tvHandledBy.setText("This issue is handled by: " + (fullName.isEmpty() ? "Unknown" : fullName));
-                        } else {
+            FirebaseDatabase.getInstance().getReference("users").child(handledBy)
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                            if (snapshot.exists()) {
+                                String firstName = snapshot.child("firstName").getValue(String.class);
+                                String lastName = snapshot.child("lastName").getValue(String.class);
+                                String fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
+                                tvHandledBy.setText("This issue is handled by: " + (fullName.isEmpty() ? "Unknown" : fullName));
+                            } else {
+                                tvHandledBy.setText("This issue is handled by: Unknown");
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
                             tvHandledBy.setText("This issue is handled by: Unknown");
                         }
-                    })
-                    .addOnFailureListener(e ->
-                            tvHandledBy.setText("This issue is handled by: Unknown")
-                    );
+                    });
         } else {
             tvHandledBy.setText("This issue is handled by: Not assigned");
         }
-
 
         btnReport.setOnClickListener(v -> {
             if (_IsReported) {
@@ -175,20 +176,25 @@ public class IssueDetailsActivity extends AppCompatActivity {
         });
 
         String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        FirebaseFirestore.getInstance().collection("users")
-                .document(currentUserId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    if (documentSnapshot.exists()) {
-                        String role = documentSnapshot.getString("role");
-                        if (role != null && role.trim().equalsIgnoreCase("Government Employee") && !_IsReported && !_IsDone) {
-                            setupSpinnerForStatus(status);
-                        } else {
-                            spinnerStatus.setVisibility(View.GONE);
+        FirebaseDatabase.getInstance().getReference("users").child(currentUserId)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot snapshot) {
+                        if (snapshot.exists()) {
+                            String role = snapshot.child("role").getValue(String.class);
+                            if (role != null && role.trim().equalsIgnoreCase("Government Employee") && !_IsReported && !_IsDone) {
+                                setupSpinnerForStatus(status);
+                            } else {
+                                spinnerStatus.setVisibility(View.GONE);
+                            }
                         }
                     }
-                });
 
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+                        // Handle error if needed
+                    }
+                });
 
         backHome.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -196,12 +202,11 @@ public class IssueDetailsActivity extends AppCompatActivity {
                 finish();
             }
         });
-
     }
 
     private void setupSpinnerForStatus(String currentStatus) {
         String[] statuses = {"PENDING", "IN_PROGRESS", "DONE"};
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, statuses) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, statuses) {
             @Override
             public View getView(int position, View convertView, android.view.ViewGroup parent) {
                 View view = super.getView(position, convertView, parent);
@@ -245,15 +250,25 @@ public class IssueDetailsActivity extends AppCompatActivity {
                             issueRef.child("handledBy").removeValue();
                             tvHandledBy.setText("This issue is being handled by: Not assigned");
 
-                            // Decrease gov.issue_in_progress by 1 if previously assigned
+                            // Update gov profile using single transaction-like update
                             DatabaseReference govRefPending = FirebaseDatabase.getInstance().getReference("profile/gov").child(userId);
-                            govRefPending.child("issue_in_progress").addListenerForSingleValueEvent(new ValueEventListener() {
+                            govRefPending.addListenerForSingleValueEvent(new ValueEventListener() {
                                 @Override
                                 public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                    Long val = snapshot.getValue(Long.class);
-                                    if (val != null && val > 0) {
-                                        govRefPending.child("issue_in_progress").setValue(val - 1);
-                                        updateGovTotalIssueTaken(govRefPending);
+                                    long currentInProgress = snapshot.child("issue_in_progress").getValue(Long.class) != null ?
+                                            snapshot.child("issue_in_progress").getValue(Long.class) : 0;
+                                    long currentResolved = snapshot.child("issue_resolved").getValue(Long.class) != null ?
+                                            snapshot.child("issue_resolved").getValue(Long.class) : 0;
+
+                                    if (currentInProgress > 0) {
+                                        long newInProgress = currentInProgress - 1;
+                                        long newTotal = newInProgress + currentResolved;
+
+                                        // Use updateChildren for atomic update
+                                        Map<String, Object> updates = new HashMap<>();
+                                        updates.put("issue_in_progress", newInProgress);
+                                        updates.put("total_issue_taken", newTotal);
+                                        govRefPending.updateChildren(updates);
                                     }
                                 }
                                 @Override public void onCancelled(@NonNull DatabaseError error) {}
@@ -264,29 +279,44 @@ public class IssueDetailsActivity extends AppCompatActivity {
                             tvStatus.setBackgroundResource(R.drawable.status_in_progress);
                             issueRef.child("handledBy").setValue(userId);
 
-                            FirebaseFirestore.getInstance().collection("users")
-                                    .document(userId)
-                                    .get()
-                                    .addOnSuccessListener(doc -> {
-                                        if (doc.exists()) {
-                                            String firstName = doc.getString("firstName");
-                                            String lastName = doc.getString("lastName");
-                                            String fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
-                                            tvHandledBy.setText("This issue is being handled by: " + (fullName.isEmpty() ? "Unknown" : fullName));
-                                        } else {
+                            FirebaseDatabase.getInstance().getReference("users").child(userId)
+                                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                                        @Override
+                                        public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                            if (snapshot.exists()) {
+                                                String firstName = snapshot.child("firstName").getValue(String.class);
+                                                String lastName = snapshot.child("lastName").getValue(String.class);
+                                                String fullName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
+                                                tvHandledBy.setText("This issue is being handled by: " + (fullName.isEmpty() ? "Unknown" : fullName));
+                                            } else {
+                                                tvHandledBy.setText("This issue is being handled by: Unknown");
+                                            }
+                                        }
+
+                                        @Override
+                                        public void onCancelled(@NonNull DatabaseError error) {
                                             tvHandledBy.setText("This issue is being handled by: Unknown");
                                         }
-                                    })
-                                    .addOnFailureListener(e -> tvHandledBy.setText("This issue is being handled by: Unknown"));
+                                    });
 
-                            // Increase gov.issue_in_progress by 1
+                            // Update gov profile using single transaction-like update
                             DatabaseReference govRef = FirebaseDatabase.getInstance().getReference("profile/gov").child(userId);
-                            govRef.child("issue_in_progress").addListenerForSingleValueEvent(new ValueEventListener() {
+                            govRef.addListenerForSingleValueEvent(new ValueEventListener() {
                                 @Override
                                 public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                    long current = snapshot.getValue(Long.class) != null ? snapshot.getValue(Long.class) : 0;
-                                    govRef.child("issue_in_progress").setValue(current + 1);
-                                    updateGovTotalIssueTaken(govRef);
+                                    long currentInProgress = snapshot.child("issue_in_progress").getValue(Long.class) != null ?
+                                            snapshot.child("issue_in_progress").getValue(Long.class) : 0;
+                                    long currentResolved = snapshot.child("issue_resolved").getValue(Long.class) != null ?
+                                            snapshot.child("issue_resolved").getValue(Long.class) : 0;
+
+                                    long newInProgress = currentInProgress + 1;
+                                    long newTotal = newInProgress + currentResolved;
+
+                                    // Use updateChildren for atomic update
+                                    Map<String, Object> updates = new HashMap<>();
+                                    updates.put("issue_in_progress", newInProgress);
+                                    updates.put("total_issue_taken", newTotal);
+                                    govRef.updateChildren(updates);
                                 }
                                 @Override public void onCancelled(@NonNull DatabaseError error) {}
                             });
@@ -297,65 +327,64 @@ public class IssueDetailsActivity extends AppCompatActivity {
                             issueRef.child("isDone").setValue(true);
                             spinnerStatus.setVisibility(View.GONE);
 
-                            // Update gov profile
+                            // Update gov profile using single transaction-like update
                             DatabaseReference govDoneRef = FirebaseDatabase.getInstance().getReference("profile/gov").child(userId);
-
-                            govDoneRef.child("issue_in_progress").addListenerForSingleValueEvent(new ValueEventListener() {
+                            govDoneRef.addListenerForSingleValueEvent(new ValueEventListener() {
                                 @Override
                                 public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                    long inProgress = snapshot.getValue(Long.class) != null ? snapshot.getValue(Long.class) : 0;
-                                    if (inProgress > 0) {
-                                        govDoneRef.child("issue_in_progress").setValue(inProgress - 1);
-                                    }
+                                    long currentInProgress = snapshot.child("issue_in_progress").getValue(Long.class) != null ?
+                                            snapshot.child("issue_in_progress").getValue(Long.class) : 0;
+                                    long currentResolved = snapshot.child("issue_resolved").getValue(Long.class) != null ?
+                                            snapshot.child("issue_resolved").getValue(Long.class) : 0;
 
-                                    // Increment issue_resolved
-                                    govDoneRef.child("issue_resolved").addListenerForSingleValueEvent(new ValueEventListener() {
-                                        @Override
-                                        public void onDataChange(@NonNull DataSnapshot snap) {
-                                            long resolved = snap.getValue(Long.class) != null ? snap.getValue(Long.class) : 0;
-                                            govDoneRef.child("issue_resolved").setValue(resolved + 1);
-                                            updateGovTotalIssueTaken(govDoneRef);
-                                        }
-                                        @Override public void onCancelled(@NonNull DatabaseError error) {}
-                                    });
+                                    long newInProgress = Math.max(currentInProgress - 1, 0);
+                                    long newResolved = currentResolved + 1;
+                                    long newTotal = newInProgress + newResolved;
+
+                                    // Use updateChildren for atomic update
+                                    Map<String, Object> updates = new HashMap<>();
+                                    updates.put("issue_in_progress", newInProgress);
+                                    updates.put("issue_resolved", newResolved);
+                                    updates.put("total_issue_taken", newTotal);
+                                    govDoneRef.updateChildren(updates);
                                 }
                                 @Override public void onCancelled(@NonNull DatabaseError error) {}
                             });
 
-                            // Update citizen profile: resolved_by_gov++
+                            // Update citizen profile separately
                             issueRef.child("submittedBy").child("userId").addListenerForSingleValueEvent(new ValueEventListener() {
                                 @Override
                                 public void onDataChange(@NonNull DataSnapshot snapshot) {
                                     String citizenId = snapshot.getValue(String.class);
                                     if (citizenId != null) {
                                         DatabaseReference citizenRef = FirebaseDatabase.getInstance().getReference("profile/citizen").child(citizenId);
-                                        citizenRef.child("resolved_by_gov").addListenerForSingleValueEvent(new ValueEventListener() {
+
+                                        citizenRef.addListenerForSingleValueEvent(new ValueEventListener() {
                                             @Override
                                             public void onDataChange(@NonNull DataSnapshot snap) {
-                                                long resolvedByGov = snap.getValue(Long.class) != null ? snap.getValue(Long.class) : 0;
-                                                citizenRef.child("resolved_by_gov").setValue(resolvedByGov + 1);
+                                                long currentResolvedByGov = snap.child("resolved_by_gov").getValue(Long.class) != null ?
+                                                        snap.child("resolved_by_gov").getValue(Long.class) : 0;
+                                                long currentSubmitted = snap.child("issue_submitted").getValue(Long.class) != null ?
+                                                        snap.child("issue_submitted").getValue(Long.class) : 0;
 
-                                                // Update pending_issues = issue_submitted - resolved_by_gov
-                                                citizenRef.child("issue_submitted").addListenerForSingleValueEvent(new ValueEventListener() {
-                                                    @Override
-                                                    public void onDataChange(@NonNull DataSnapshot subSnap) {
-                                                        long submitted = subSnap.getValue(Long.class) != null ? subSnap.getValue(Long.class) : 0;
-                                                        citizenRef.child("pending_issues").setValue(submitted - (resolvedByGov + 1));
-                                                    }
-                                                    @Override public void onCancelled(@NonNull DatabaseError error) {}
-                                                });
+                                                long newResolvedByGov = currentResolvedByGov + 1;
+                                                long newPending = Math.max(currentSubmitted - newResolvedByGov, 0);
+
+                                                // Use updateChildren for atomic update
+                                                Map<String, Object> citizenUpdates = new HashMap<>();
+                                                citizenUpdates.put("resolved_by_gov", newResolvedByGov);
+                                                citizenUpdates.put("pending_issues", newPending);
+                                                citizenRef.updateChildren(citizenUpdates);
                                             }
-
-                                            @Override public void onCancelled(@NonNull DatabaseError error) {}
+                                            @Override
+                                            public void onCancelled(@NonNull DatabaseError error) {}
                                         });
                                     }
                                 }
-
                                 @Override public void onCancelled(@NonNull DatabaseError error) {}
                             });
                             break;
                     }
-
 
                     issueRef.child("status")
                             .setValue(newStatus)
@@ -380,25 +409,4 @@ public class IssueDetailsActivity extends AppCompatActivity {
             return "Unknown";
         }
     }
-
-    private void updateGovTotalIssueTaken(DatabaseReference govRef) {
-        govRef.child("issue_in_progress").addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(@NonNull DataSnapshot inProgressSnap) {
-                long inProgress = inProgressSnap.getValue(Long.class) != null ? inProgressSnap.getValue(Long.class) : 0;
-                govRef.child("issue_resolved").addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(@NonNull DataSnapshot resolvedSnap) {
-                        long resolved = resolvedSnap.getValue(Long.class) != null ? resolvedSnap.getValue(Long.class) : 0;
-                        govRef.child("total_issue_taken").setValue(inProgress + resolved);
-                    }
-
-                    @Override public void onCancelled(@NonNull DatabaseError error) {}
-                });
-            }
-
-            @Override public void onCancelled(@NonNull DatabaseError error) {}
-        });
-    }
-
 }

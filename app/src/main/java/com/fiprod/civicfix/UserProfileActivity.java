@@ -9,9 +9,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.bumptech.glide.Glide;
-import com.google.firebase.Timestamp;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.DataSnapshot;
@@ -26,7 +23,7 @@ public class UserProfileActivity extends AppCompatActivity {
 
     private static final String TAG = "UserProfileActivity";
 
-    private FirebaseFirestore firestore;
+    private DatabaseReference usersRef;
     private DatabaseReference realtimeDb;
 
     private TextView profileName, profileRole, profileDistrict, profileJoined;
@@ -39,7 +36,7 @@ public class UserProfileActivity extends AppCompatActivity {
         setContentView(R.layout.activity_user_profile);
 
         try {
-            firestore = FirebaseFirestore.getInstance();
+            usersRef = FirebaseDatabase.getInstance().getReference("users");
             realtimeDb = FirebaseDatabase.getInstance().getReference("profile");
 
             // Initializing Views
@@ -77,76 +74,79 @@ public class UserProfileActivity extends AppCompatActivity {
     }
 
     private void loadUserProfile(String userId) {
-        firestore.collection("users").document(userId)
-                .get()
-                .addOnSuccessListener(documentSnapshot -> {
-                    try {
-                        if (documentSnapshot.exists()) {
-                            Log.d(TAG, "User document found");
+        usersRef.child(userId).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot snapshot) {
+                try {
+                    if (snapshot.exists()) {
+                        Log.d(TAG, "User document found");
 
-                            // Fetching user data with null checks
-                            String firstName = documentSnapshot.getString("firstName");
-                            String lastName = documentSnapshot.getString("lastName");
-                            String role = documentSnapshot.getString("role");
-                            String district = documentSnapshot.getString("district");
-                            String profileImageUrl = documentSnapshot.getString("profileImageUrl");
+                        // Fetching user data with null checks
+                        String firstName = snapshot.child("firstName").getValue(String.class);
+                        String lastName = snapshot.child("lastName").getValue(String.class);
+                        String role = snapshot.child("role").getValue(String.class);
+                        String district = snapshot.child("district").getValue(String.class);
+                        String profileImageUrl = snapshot.child("profileImageUrl").getValue(String.class);
 
-                            // Handle loginDate as Timestamp (this was causing the crash)
-                            String joinDateFormatted = handleLoginDate(documentSnapshot);
+                        // Handle loginDate as String (this was causing the crash)
+                        String joinDateFormatted = handleLoginDate(snapshot);
 
-                            // Set data into the views with null checks
-                            String fullName = ((firstName != null ? firstName : "") + " " +
-                                    (lastName != null ? lastName : "")).trim();
-                            if (fullName.isEmpty()) {
-                                fullName = "Unknown User";
-                            }
-                            profileName.setText(fullName);
-
-                            profileRole.setText("Role: " + (role != null ? role : "Not specified"));
-                            profileDistrict.setText("District: " + (district != null ? district : "Not specified"));
-                            profileJoined.setText("Joined: " + joinDateFormatted);
-
-                            // Set the profile image using Glide
-                            loadProfileImage(profileImageUrl);
-
-                            // Load user stats after loading the profile
-                            loadUserStats(userId, role != null ? role : "");
-
-                        } else {
-                            Log.w(TAG, "User document does not exist");
-                            Toast.makeText(UserProfileActivity.this, "User profile not found", Toast.LENGTH_SHORT).show();
-                            finish();
+                        // Set data into the views with null checks
+                        String fullName = ((firstName != null ? firstName : "") + " " +
+                                (lastName != null ? lastName : "")).trim();
+                        if (fullName.isEmpty()) {
+                            fullName = "Unknown User";
                         }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error processing user document: " + e.getMessage(), e);
-                        Toast.makeText(UserProfileActivity.this, "Error loading profile data", Toast.LENGTH_SHORT).show();
+                        profileName.setText(fullName);
+
+                        profileRole.setText("Role: " + (role != null ? role : "Not specified"));
+                        profileDistrict.setText("District: " + (district != null ? district : "Not specified"));
+                        profileJoined.setText("Joined: " + joinDateFormatted);
+
+                        // Set the profile image using Glide
+                        loadProfileImage(profileImageUrl);
+
+                        // Load user stats after loading the profile
+                        loadUserStats(userId, role != null ? role : "");
+
+                    } else {
+                        Log.w(TAG, "User document does not exist");
+                        Toast.makeText(UserProfileActivity.this, "User profile not found", Toast.LENGTH_SHORT).show();
+                        finish();
                     }
-                })
-                .addOnFailureListener(e -> {
-                    Log.e(TAG, "Failed to load user profile: " + e.getMessage(), e);
-                    Toast.makeText(UserProfileActivity.this, "Failed to load profile", Toast.LENGTH_SHORT).show();
-                    finish();
-                });
+                } catch (Exception e) {
+                    Log.e(TAG, "Error processing user document: " + e.getMessage(), e);
+                    Toast.makeText(UserProfileActivity.this, "Error loading profile data", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError error) {
+                Log.e(TAG, "Failed to load user profile: " + error.getMessage());
+                Toast.makeText(UserProfileActivity.this, "Failed to load profile", Toast.LENGTH_SHORT).show();
+                finish();
+            }
+        });
     }
 
-    private String handleLoginDate(DocumentSnapshot documentSnapshot) {
+    private String handleLoginDate(DataSnapshot snapshot) {
         String joinDateFormatted = "N/A";
 
         try {
-            // First try to get as Timestamp (this is what's causing the original crash)
-            Timestamp loginTimestamp = documentSnapshot.getTimestamp("loginDate");
+            // First try to get as Long (timestamp in milliseconds)
+            Long loginTimestamp = snapshot.child("loginDate").getValue(Long.class);
             if (loginTimestamp != null) {
-                Date loginDate = loginTimestamp.toDate();
+                Date loginDate = new Date(loginTimestamp);
                 SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
                 joinDateFormatted = sdf.format(loginDate);
-                Log.d(TAG, "Successfully parsed loginDate as Timestamp");
+                Log.d(TAG, "Successfully parsed loginDate as timestamp");
             }
         } catch (Exception e1) {
-            Log.w(TAG, "Failed to read loginDate as Timestamp, trying as String: " + e1.getMessage());
+            Log.w(TAG, "Failed to read loginDate as timestamp, trying as String: " + e1.getMessage());
 
             // Fallback: try to get as String
             try {
-                String joinDate = documentSnapshot.getString("loginDate");
+                String joinDate = snapshot.child("loginDate").getValue(String.class);
                 if (joinDate != null && !joinDate.isEmpty()) {
                     // Try to parse different date formats
                     joinDateFormatted = parseStringDate(joinDate);
@@ -167,7 +167,8 @@ public class UserProfileActivity extends AppCompatActivity {
                 "dd/MM/yyyy",
                 "MM/dd/yyyy",
                 "dd-MM-yyyy",
-                "yyyy/MM/dd"
+                "yyyy/MM/dd",
+                "yyyy-MM-dd'T'HH:mm:ss'Z'"
         };
 
         for (String pattern : patterns) {
