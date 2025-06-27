@@ -2,8 +2,10 @@ package com.fiprod.civicfix;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.ArrayAdapter;
@@ -22,6 +24,13 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 
+import org.osmdroid.api.IMapController;
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -32,19 +41,30 @@ import java.util.Map;
 public class IssueDetailsActivity extends AppCompatActivity {
 
     TextView tvTitle, tvDescription, tvCategory, tvArea, tvStatus, tvUpvotes, tvReportedBy, tvHandledBy, tvAlreadyReported;
-    ImageView ivIssueImage;
+    ImageView ivIssueImage, ivLocationIcon;
 
     ImageView backHome;
     Spinner spinnerStatus;
     MaterialButton btnReport;
 
+    // Map related views
+    private LinearLayout mapContainer;
+    private MapView mapView;
+    private MaterialButton btnCloseMap;
+    private boolean isMapVisible = false;
+
     String issueId;
     private boolean _IsReported = false;
     private boolean _IsDone = false;
+    private String locationCoordinates; // Will store "latitude,longitude"
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Initialize OSMDroid configuration
+        Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
+
         //EdgeToEdge.enable(this);
         setContentView(R.layout.activity_issue_details);
 
@@ -57,9 +77,15 @@ public class IssueDetailsActivity extends AppCompatActivity {
         tvReportedBy = findViewById(R.id.tvReportedBy);
         tvHandledBy = findViewById(R.id.tvHandledBy);
         ivIssueImage = findViewById(R.id.ivIssueImage);
+        ivLocationIcon = findViewById(R.id.ivLocationIcon);
         spinnerStatus = findViewById(R.id.spinnerStatus);
         btnReport = findViewById(R.id.btnReport);
         tvAlreadyReported = findViewById(R.id.tvAlreadyReported);
+
+        // Map related views
+        mapContainer = findViewById(R.id.mapContainer);
+        mapView = findViewById(R.id.mapView);
+        btnCloseMap = findViewById(R.id.btnCloseMap);
 
         backHome = findViewById(R.id.back_home);
 
@@ -74,6 +100,9 @@ public class IssueDetailsActivity extends AppCompatActivity {
         String submittedBy = getIntent().getStringExtra("submittedBy");
         String timestamp = getIntent().getStringExtra("timestamp");
         String handledBy = getIntent().getStringExtra("handledBy");
+
+        // Store the coordinates for map display
+        locationCoordinates = area;
 
         if (status != null) {
             switch (status.toUpperCase()) {
@@ -103,6 +132,10 @@ public class IssueDetailsActivity extends AppCompatActivity {
         String formattedDate = formatDate(timestamp);
         tvReportedBy.setText("Reported by " + submittedBy + " on " + formattedDate);
         Glide.with(this).load(imageUrl).into(ivIssueImage);
+
+        // Setup map functionality
+        setupMap();
+        setupLocationIcon();
 
         DatabaseReference issueRef = FirebaseDatabase.getInstance().getReference("issues").child(issueId);
 
@@ -199,9 +232,84 @@ public class IssueDetailsActivity extends AppCompatActivity {
         backHome.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
+                if (isMapVisible) {
+                    hideMap();
+                } else {
+                    finish();
+                }
             }
         });
+    }
+
+    private void setupMap() {
+        mapView.setTileSource(TileSourceFactory.MAPNIK);
+        mapView.setMultiTouchControls(true);
+
+        IMapController mapController = mapView.getController();
+        mapController.setZoom(16.0);
+
+        // Setup close map button
+        btnCloseMap.setOnClickListener(v -> hideMap());
+    }
+
+    private void setupLocationIcon() {
+        ivLocationIcon.setOnClickListener(v -> {
+            if (locationCoordinates != null && !locationCoordinates.isEmpty()) {
+                showLocationOnMap();
+            } else {
+                Toast.makeText(this, "Location data not available", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showLocationOnMap() {
+        try {
+            String[] coords = locationCoordinates.split(",");
+            if (coords.length == 2) {
+                double latitude = Double.parseDouble(coords[0].trim());
+                double longitude = Double.parseDouble(coords[1].trim());
+
+                GeoPoint point = new GeoPoint(latitude, longitude);
+
+                // Clear existing overlays and add marker
+                mapView.getOverlays().clear();
+
+                Marker marker = new Marker(mapView);
+                marker.setPosition(point);
+                marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+                marker.setTitle("Issue Location");
+
+                mapView.getOverlays().add(marker);
+
+                // Center map on the location
+                IMapController mapController = mapView.getController();
+                mapController.setCenter(point);
+                mapController.setZoom(16.0);
+
+                mapView.invalidate();
+                showMap();
+            } else {
+                Toast.makeText(this, "Invalid location data format", Toast.LENGTH_SHORT).show();
+            }
+        } catch (NumberFormatException e) {
+            Toast.makeText(this, "Error parsing location coordinates", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showMap() {
+        mapContainer.setVisibility(View.VISIBLE);
+        isMapVisible = true;
+        if (mapView != null) {
+            mapView.onResume();
+        }
+    }
+
+    private void hideMap() {
+        mapContainer.setVisibility(View.GONE);
+        isMapVisible = false;
+        if (mapView != null) {
+            mapView.onPause();
+        }
     }
 
     private void setupSpinnerForStatus(String currentStatus) {
@@ -407,6 +515,31 @@ public class IssueDetailsActivity extends AppCompatActivity {
             return output.format(date);
         } catch (ParseException e) {
             return "Unknown";
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mapView != null && isMapVisible) {
+            mapView.onResume();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mapView != null) {
+            mapView.onPause();
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isMapVisible) {
+            hideMap();
+        } else {
+            super.onBackPressed();
         }
     }
 }
