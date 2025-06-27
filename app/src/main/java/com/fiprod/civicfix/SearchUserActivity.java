@@ -7,12 +7,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.EditText;
-import android.widget.Spinner;
-import android.widget.Toast;
-
+import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -20,10 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.database.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +29,7 @@ public class SearchUserActivity extends AppCompatActivity {
     private Spinner filterSpinner;
     private RecyclerView recyclerView;
     private UserAdapter userAdapter;
-    private FirebaseFirestore firestore;
+    private DatabaseReference dbRef;
     private BottomNavigationView bottomNavigationView;
 
     @Override
@@ -62,7 +54,7 @@ public class SearchUserActivity extends AppCompatActivity {
     }
 
     private void initializeViews() {
-        firestore = FirebaseFirestore.getInstance();
+        dbRef = FirebaseDatabase.getInstance().getReference();
         searchEditText = findViewById(R.id.edit_search_users);
         filterSpinner = findViewById(R.id.user_filter);
         recyclerView = findViewById(R.id.recycler_users);
@@ -123,9 +115,7 @@ public class SearchUserActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parentView) {
-                // pass
-            }
+            public void onNothingSelected(AdapterView<?> parentView) {}
         });
     }
 
@@ -151,58 +141,47 @@ public class SearchUserActivity extends AppCompatActivity {
 
             Log.d(TAG, "Searching with text: '" + searchText + "' and role: '" + selectedRole + "'");
 
-            Query query = firestore.collection("users");
-
-            // Filter by role first (if not "All")
-            if (!selectedRole.equalsIgnoreCase("all")) {
-                query = query.whereEqualTo("role", selectedRole);
-            }
-
-            // For text search, we'll need to filter on the client side
-            // because Firestore doesn't support full-text search easily
-            query.get().addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    QuerySnapshot querySnapshot = task.getResult();
+            dbRef.child("users").addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot snapshot) {
                     List<User> userList = new ArrayList<>();
 
-                    if (querySnapshot != null) {
-                        for (DocumentSnapshot document : querySnapshot.getDocuments()) {
-                            try {
-                                String firstName = document.getString("firstName");
-                                String lastName = document.getString("lastName");
-                                String role = document.getString("role");
-                                String profileImageUrl = document.getString("profileImageUrl");
+                    for (DataSnapshot child : snapshot.getChildren()) {
+                        try {
+                            String uid = child.getKey();
+                            String firstName = child.child("firstName").getValue(String.class);
+                            String lastName = child.child("lastName").getValue(String.class);
+                            String role = child.child("role").getValue(String.class);
+                            String profileImageUrl = child.child("profileImageUrl").getValue(String.class);
 
-                                // Null checks
-                                if (firstName == null) firstName = "";
-                                if (lastName == null) lastName = "";
-                                if (role == null) role = "";
-                                if (profileImageUrl == null) profileImageUrl = "";
+                            if (firstName == null) firstName = "";
+                            if (lastName == null) lastName = "";
+                            if (role == null) role = "";
+                            if (profileImageUrl == null) profileImageUrl = "";
 
-                                // Client-side text filtering
-                                if (searchText.isEmpty() ||
-                                        firstName.toLowerCase().contains(searchText) ||
-                                        lastName.toLowerCase().contains(searchText)) {
+                            boolean roleMatches = selectedRole.equalsIgnoreCase("all") || role.equalsIgnoreCase(selectedRole);
+                            boolean nameMatches = searchText.isEmpty()
+                                    || firstName.toLowerCase().contains(searchText)
+                                    || lastName.toLowerCase().contains(searchText);
 
-                                    userList.add(new User(firstName, lastName, role, profileImageUrl, document.getId()));
-                                }
-
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error processing document: " + document.getId(), e);
+                            if (roleMatches && nameMatches) {
+                                userList.add(new User(firstName, lastName, role, profileImageUrl, uid));
                             }
+
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error processing user", e);
                         }
                     }
 
                     Log.d(TAG, "Found " + userList.size() + " users");
                     userAdapter.updateUsers(userList);
-
-                } else {
-                    Log.e(TAG, "Error fetching users", task.getException());
-                    Toast.makeText(SearchUserActivity.this, "Error fetching users.", Toast.LENGTH_SHORT).show();
                 }
-            }).addOnFailureListener(e -> {
-                Log.e(TAG, "Firestore query failed", e);
-                Toast.makeText(SearchUserActivity.this, "Search failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError error) {
+                    Log.e(TAG, "Realtime DB query failed", error.toException());
+                    Toast.makeText(SearchUserActivity.this, "Search failed: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                }
             });
 
         } catch (Exception e) {
@@ -210,6 +189,7 @@ public class SearchUserActivity extends AppCompatActivity {
             Toast.makeText(this, "Search error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
+
     @SuppressLint("MissingSuperCall")
     @Override
     public void onBackPressed() {
@@ -218,11 +198,10 @@ public class SearchUserActivity extends AppCompatActivity {
                 .setMessage("Do you want to exit the app?")
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
-                        finishAffinity(); // 👈 Proper way to exit the app
+                        finishAffinity();
                     }
                 })
                 .setNegativeButton("No", null)
                 .show();
     }
-
 }

@@ -103,8 +103,8 @@
 
                     <ImageView
                         android:id="@+id/image_upvote"
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
                         android:src="@drawable/ic_upvote" />
 
                     <TextView

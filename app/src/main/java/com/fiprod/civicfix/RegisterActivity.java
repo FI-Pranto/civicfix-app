@@ -10,20 +10,13 @@ import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.PasswordTransformationMethod;
 import android.util.Patterns;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.Spinner;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +30,7 @@ public class RegisterActivity extends AppCompatActivity {
     TextView loginNow, verifyMail;
 
     FirebaseAuth mAuth;
-    FirebaseFirestore db;
+    DatabaseReference dbRef;
 
     ImageView togglePassword;
     ImageView toggleConfirmPassword;
@@ -46,7 +39,6 @@ public class RegisterActivity extends AppCompatActivity {
     private boolean isConfirmPasswordVisible = false;
     Spinner districtSpinner;
     String selectedDistrict = "";
-
 
     String selectedRole = "Citizen"; // default
 
@@ -71,7 +63,7 @@ public class RegisterActivity extends AppCompatActivity {
         setContentView(R.layout.activity_register);
 
         mAuth = FirebaseAuth.getInstance();
-        db = FirebaseFirestore.getInstance();
+        dbRef = FirebaseDatabase.getInstance().getReference();
 
         emailET = findViewById(R.id.email);
         passwordET = findViewById(R.id.password);
@@ -86,9 +78,6 @@ public class RegisterActivity extends AppCompatActivity {
 
         togglePassword = findViewById(R.id.toggle_password);
         toggleConfirmPassword = findViewById(R.id.toggle_confirm_password);
-
-
-
 
         districtSpinner = findViewById(R.id.district_spinner);
 
@@ -119,8 +108,6 @@ public class RegisterActivity extends AppCompatActivity {
             public void onNothingSelected(AdapterView<?> parent) {}
         });
 
-
-
         roleSpinner = findViewById(R.id.account_type_spinner);
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
                 android.R.layout.simple_spinner_item,
@@ -145,8 +132,6 @@ public class RegisterActivity extends AppCompatActivity {
 
         signupBtn.setOnClickListener(v -> registerUser());
 
-       // verifyMail.setOnClickListener(v -> resendVerificationEmail());
-
         loginNow.setOnClickListener(v -> {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
@@ -156,21 +141,22 @@ public class RegisterActivity extends AppCompatActivity {
             isPasswordVisible = !isPasswordVisible;
             if (isPasswordVisible) {
                 passwordET.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-                togglePassword.setImageResource(R.drawable.ic_eye); // open eye icon
+                togglePassword.setImageResource(R.drawable.ic_eye);
             } else {
                 passwordET.setTransformationMethod(PasswordTransformationMethod.getInstance());
-                togglePassword.setImageResource(R.drawable.ic_eye_off); // closed eye icon
+                togglePassword.setImageResource(R.drawable.ic_eye_off);
             }
             passwordET.setSelection(passwordET.getText().length());
         });
+
         toggleConfirmPassword.setOnClickListener(v -> {
             isConfirmPasswordVisible = !isConfirmPasswordVisible;
             if (isConfirmPasswordVisible) {
                 confirmPasswordET.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
-                toggleConfirmPassword.setImageResource(R.drawable.ic_eye); // open eye icon
+                toggleConfirmPassword.setImageResource(R.drawable.ic_eye);
             } else {
                 confirmPasswordET.setTransformationMethod(PasswordTransformationMethod.getInstance());
-                toggleConfirmPassword.setImageResource(R.drawable.ic_eye_off); // closed eye icon
+                toggleConfirmPassword.setImageResource(R.drawable.ic_eye_off);
             }
             confirmPasswordET.setSelection(confirmPasswordET.getText().length());
         });
@@ -195,9 +181,7 @@ public class RegisterActivity extends AppCompatActivity {
         String firstName = firstNameET.getText().toString().trim();
         String lastName = lastNameET.getText().toString().trim();
         String phone = phoneET.getText().toString().trim();
-        String office;
-        String designation;
-        String idCardNumber;
+        String office, designation, idCardNumber;
 
         if (selectedRole.equals("Government Employee")) {
             office = officeNameET.getText().toString().trim();
@@ -217,37 +201,33 @@ public class RegisterActivity extends AppCompatActivity {
             if (task.isSuccessful()) {
                 FirebaseUser user = mAuth.getCurrentUser();
                 if (user != null) {
-                    user.sendEmailVerification()
-                            .addOnSuccessListener(unused -> {
-                                Toast.makeText(this, "Verification email sent. Please verify before logging in.", Toast.LENGTH_LONG).show();
-                               // verifyMail.setVisibility(View.VISIBLE);
+                    user.sendEmailVerification().addOnSuccessListener(unused -> {
+                        Toast.makeText(this, "Verification email sent. Please verify before logging in.", Toast.LENGTH_LONG).show();
 
-                                String uid = user.getUid();
-                                Map<String, Object> userMap = new HashMap<>();
-                                userMap.put("email", email.toLowerCase());
-                                userMap.put("firstName", firstName);
-                                userMap.put("lastName", lastName);
-                                userMap.put("phone", phone);
-                                userMap.put("role", selectedRole);
-                                userMap.put("loginDate", FieldValue.serverTimestamp());
-                                userMap.put("verified", false);
-                                userMap.put("district", selectedDistrict);
+                        String uid = user.getUid();
+                        Map<String, Object> userMap = new HashMap<>();
+                        userMap.put("email", email.toLowerCase());
+                        userMap.put("firstName", firstName);
+                        userMap.put("lastName", lastName);
+                        userMap.put("phone", phone);
+                        userMap.put("role", selectedRole);
+                        userMap.put("loginDate", System.currentTimeMillis()); // simple timestamp
+                        userMap.put("verified", false);
+                        userMap.put("district", selectedDistrict);
 
-                                if (selectedRole.equals("Government Employee")) {
-                                    userMap.put("officeName", office);
-                                    userMap.put("designation", designation);
-                                    userMap.put("idCardNumber", idCardNumber);
-                                    userMap.put("verifiedDoc", false);
+                        if (selectedRole.equals("Government Employee")) {
+                            userMap.put("officeName", office);
+                            userMap.put("designation", designation);
+                            userMap.put("idCardNumber", idCardNumber);
+                            userMap.put("verifiedDoc", false);
+                        }
 
-                                }
+                        saveUserData(uid, userMap);
+                        mAuth.signOut();
 
-                                saveUserData(uid, userMap);
-
-                                mAuth.signOut();
-                            })
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(this, "Failed to send verification email.", Toast.LENGTH_SHORT).show()
-                            );
+                    }).addOnFailureListener(e ->
+                            Toast.makeText(this, "Failed to send verification email.", Toast.LENGTH_SHORT).show()
+                    );
                 }
             } else {
                 Toast.makeText(this, "Registration Failed: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
@@ -255,28 +235,9 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 
-/*    private void resendVerificationEmail() {
-        if (!isConnected(this)) {
-            Toast.makeText(this, "No internet connection.", Toast.LENGTH_LONG).show();
-            return;
-        }
-        FirebaseUser user = mAuth.getCurrentUser();
-        if (user != null && !user.isEmailVerified()) {
-            user.sendEmailVerification()
-                    .addOnSuccessListener(unused ->
-                            Toast.makeText(this, "Verification email resent.", Toast.LENGTH_SHORT).show()
-                    )
-                    .addOnFailureListener(e ->
-                            Toast.makeText(this, "Failed to resend verification email.", Toast.LENGTH_SHORT).show()
-                    );
-        } else {
-            Toast.makeText(this, "No user found or already verified.", Toast.LENGTH_SHORT).show();
-        }
-    }*/
-
     private void saveUserData(String uid, Map<String, Object> userMap) {
-        db.collection("users").document(uid).set(userMap).addOnSuccessListener(unused -> {
-            // Don't go to MainActivity now
+        dbRef.child("users").child(uid).setValue(userMap).addOnSuccessListener(unused -> {
+            // Do not redirect user now
         }).addOnFailureListener(e ->
                 Toast.makeText(this, "Failed to save user data.", Toast.LENGTH_SHORT).show()
         );
@@ -293,70 +254,55 @@ public class RegisterActivity extends AppCompatActivity {
                                              String role, String idCardNumber,
                                              String office, String designation) {
         if (email.isEmpty()) {
-            Toast.makeText(this, "Email is required", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "Email is required", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            Toast.makeText(this, "Invalid email format", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "Invalid email format", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (firstName.isEmpty()) {
-            Toast.makeText(this, "First name is required", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "First name is required", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (lastName.isEmpty()) {
-            Toast.makeText(this, "Last name is required", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "Last name is required", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (phone.isEmpty()) {
-            Toast.makeText(this, "Phone number is required", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "Phone number is required", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (!phone.matches("^01[3-9]\\d{8}$")) {
-            Toast.makeText(this, "Invalid Bangladeshi phone number", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "Invalid Bangladeshi phone number", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (password.isEmpty()) {
-            Toast.makeText(this, "Password is required", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "Password is required", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (password.length() < 6) {
-            Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (!password.equals(confirmPassword)) {
-            Toast.makeText(this, "Passwords do not match!", Toast.LENGTH_SHORT).show();
-            return false;
+            Toast.makeText(this, "Passwords do not match!", Toast.LENGTH_SHORT).show(); return false;
         }
 
         if (role.equals("Government Employee")) {
             if (office.isEmpty()) {
-                Toast.makeText(this, "Office name is required", Toast.LENGTH_SHORT).show();
-                return false;
+                Toast.makeText(this, "Office name is required", Toast.LENGTH_SHORT).show(); return false;
             }
-
             if (designation.isEmpty()) {
-                Toast.makeText(this, "Designation is required", Toast.LENGTH_SHORT).show();
-                return false;
+                Toast.makeText(this, "Designation is required", Toast.LENGTH_SHORT).show(); return false;
             }
-
             if (idCardNumber.isEmpty()) {
-                Toast.makeText(this, "ID card number is required", Toast.LENGTH_SHORT).show();
-                return false;
+                Toast.makeText(this, "ID card number is required", Toast.LENGTH_SHORT).show(); return false;
             }
-
         }
-        if (selectedDistrict.equals("Select your district")||selectedDistrict.isEmpty()) {
-            Toast.makeText(this, "Select your district", Toast.LENGTH_SHORT).show();
-            return false;
+
+        if (selectedDistrict.equals("Select your district") || selectedDistrict.isEmpty()) {
+            Toast.makeText(this, "Select your district", Toast.LENGTH_SHORT).show(); return false;
         }
 
         return true;

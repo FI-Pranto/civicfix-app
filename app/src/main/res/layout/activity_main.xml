@@ -148,7 +148,7 @@
                             android:id="@+id/cardText1"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Total: 18 issues reported by you."
+                            android:text="0 issues have been successfully resolved."
                             android:textSize="14sp"
                             android:textColor="@color/gray_dark"
                             android:layout_marginTop="4dp" />
@@ -183,7 +183,7 @@
                             android:id="@+id/cardText2"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Currently 6 issues are under review or pending response."
+                            android:text="0 issues have been successfully resolved."
                             android:textSize="14sp"
                             android:textColor="@color/gray_dark"
                             android:layout_marginTop="4dp" />
@@ -218,7 +218,7 @@
                             android:id="@+id/cardText3"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="10 issues have been successfully resolved."
+                            android:text="0 issues have been successfully resolved."
                             android:textSize="14sp"
                             android:textColor="@color/gray_dark"
                             android:layout_marginTop="4dp" />
